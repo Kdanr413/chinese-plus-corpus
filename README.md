@@ -69,7 +69,3 @@ docker compose --env-file .env -f compose.database.yml up -d
 ## GitHub 源码与完整发行包
 
 直接下载 Release 的 Windows ZIP 可获得随附核心运行环境。仅克隆源码分支不会下载运行环境：请同时下载 Release 完整包，或自行准备 Python 3.11 与 requirements.txt 所列依赖。验证范围见 `VALIDATION.md`。
-
-## GitHub 源码与完整发行包
-
-直接下载 Release 的 Windows ZIP 可获得随附核心运行环境。仅克隆源码分支不会下载运行环境：请同时下载 Release 完整包，或自行准备 Python 3.11 与 requirements.txt 所列依赖。验证范围见 `VALIDATION.md`。
