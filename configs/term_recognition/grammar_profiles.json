@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0",
+  "template_syntax": "空格分隔词性类别；? 表示 0/1 次，* 表示 0/N 次，+ 表示 1/N 次；排除模板优先于包含模板",
+  "pos_classes": {
+    "NOUN": ["n", "vn", "eng", "l", "j", "i"],
+    "MODIFIER": ["a", "an", "b", "m", "q"],
+    "VERB": ["v"],
+    "VERB_NOUN": ["vn"],
+    "STATE": ["a", "an", "v", "vn"],
+    "DIRECTION": ["f"],
+    "PROCESS": ["v", "vn"],
+    "CONTENT": ["n", "vn", "eng", "l", "j", "i", "a", "an", "b", "m", "q", "v", "f"]
+  },
+  "profiles": {
+    "general_nominal": {
+      "description": "通用技术文本的保守名词型模板；排除明显的动词起始动宾短语",
+      "include_templates": ["MODIFIER* NOUN+"],
+      "exclude_templates": ["VERB NOUN+"]
+    },
+    "engineering_process": {
+      "description": "工程、能源和制造领域；在名词型术语外允许稳定的过程或操作型动宾结构",
+      "include_templates": ["MODIFIER* NOUN+", "VERB NOUN+", "PROCESS"],
+      "exclude_templates": []
+    },
+    "biomedical_state": {
+      "description": "医学、生物领域；允许以状态、异常或过程成分结尾的结构",
+      "include_templates": ["MODIFIER* NOUN+", "NOUN+ STATE"],
+      "exclude_templates": ["VERB NOUN+"]
+    },
+    "policy_governance": {
+      "description": "政策、法律和治理文本；允许名词链、方位限定和部分制度性动宾名称",
+      "include_templates": ["MODIFIER* NOUN+", "DIRECTION? NOUN+", "VERB NOUN+"],
+      "exclude_templates": []
+    },
+    "broad_recall": {
+      "description": "高召回候选模板，仅建议用于消融或人工复核，不建议直接作为正式默认配置",
+      "include_templates": ["CONTENT+"],
+      "exclude_templates": []
+    }
+  }
+}

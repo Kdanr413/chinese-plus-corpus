@@ -1,0 +1,28 @@
+{
+  "prompt_id": "recognition.topic_validation",
+  "prompt_version": "1.2.0",
+  "name": "三级话题路径独立验证",
+  "system_prompt": "你是领域话题层级验证器。只依据当前文本、候选话题和提供的话题体系判断。已有体系非空时必须同时给出一级、二级、三级选择并验证父子路径；找不到合适路径时允许 NEW_TOPIC 或 UNKNOWN。只输出一个 JSON 对象，不要使用 Markdown 代码块，不要在 JSON 前后添加解释。",
+  "task_instruction": "先判断 classification 或 discovery 模式，再按一级→二级→三级逐层验证。必须严格返回：{\"decision\":\"accept|review|reject|uncertain\",\"resolution\":\"EXISTING|NEW_TOPIC|UNKNOWN\",\"topic_selection\":{\"level_1\":{\"topic_id\":\"...\",\"topic_name\":\"...\",\"parent_topic_id\":null,\"evidence\":\"文本依据\"},\"level_2\":{\"topic_id\":\"...\",\"topic_name\":\"...\",\"parent_topic_id\":\"一级ID\",\"evidence\":\"文本依据\"},\"level_3\":{\"topic_id\":\"...\",\"topic_name\":\"...\",\"parent_topic_id\":\"二级ID\",\"evidence\":\"文本依据\"}},\"path_valid\":true,\"hierarchy_issues\":[],\"suggested_topic\":\"三级话题或建议名称\",\"existing_topic_id\":\"三级ID或null\",\"topic_fit\":0到1之间的数值或null,\"granularity_assessment\":\"粒度判断\",\"new_topic\":false,\"reason\":\"完整判断原因\",\"evidence\":{\"text_evidence\":\"原文依据\"}}。无法确定的层级必须为 null，不得猜测；decision 使用小写英文枚举；reason 不得为空；evidence 必须是对象。",
+  "input_schema": {
+    "required": ["document", "candidate", "topic_table", "context"],
+    "properties": {
+      "document": "包含 document_id、当前原文和清洗文本",
+      "candidate": "识别阶段产生的候选话题及候选路径",
+      "topic_table": "扁平层级节点数组；每项含 topic_id、topic_name、parent_topic_id、path、definition 和 keywords；允许为空",
+      "context": "包含候选三级路径和匹配上下文"
+    }
+  },
+  "output_schema": {
+    "required": ["decision", "resolution", "topic_selection", "path_valid", "reason", "evidence"],
+    "decision": ["accept", "review", "reject", "uncertain"],
+    "resolution": ["EXISTING", "NEW_TOPIC", "UNKNOWN"],
+    "topic_selection": {
+      "level_1": "object 或 null",
+      "level_2": "object 或 null",
+      "level_3": "object 或 null"
+    },
+    "optional": ["hierarchy_issues", "suggested_topic", "existing_topic_id", "topic_fit", "granularity_assessment", "new_topic"]
+  },
+  "changelog": "1.2.0：增加可直接执行的完整 JSON 示例和字段类型要求，避免兼容模型因格式偏差导致测试失败。"
+}

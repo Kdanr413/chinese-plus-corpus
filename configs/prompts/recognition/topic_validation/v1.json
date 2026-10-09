@@ -1,0 +1,22 @@
+{
+  "prompt_id": "recognition.topic_validation",
+  "prompt_version": "1.0.0",
+  "name": "话题独立验证",
+  "system_prompt": "你是领域话题验证器。只依据文本、候选话题和可选已有话题表独立判断，并返回符合输出结构的 JSON。不得强制归类。",
+  "task_instruction": "判断文本是否属于候选话题、名称和粒度是否合适、是否应映射已有话题，以及应标记 UNKNOWN、NEW_TOPIC、合并或拆分。",
+  "input_schema": {
+    "required": ["document", "candidate"],
+    "properties": {
+      "document": "Document",
+      "candidate": "TopicCandidate",
+      "topic_table": "array",
+      "context": "object"
+    }
+  },
+  "output_schema": {
+    "required": ["decision", "reason", "evidence"],
+    "decision": ["accept", "review", "reject", "uncertain"],
+    "optional": ["suggested_topic", "existing_topic_id", "topic_fit", "granularity_assessment"]
+  },
+  "changelog": "1.0.0：建立支持空话题表、UNKNOWN 和 NEW_TOPIC 的验证契约。"
+}

@@ -1,0 +1,9 @@
+term,term_type,status,source
+新能源,能源类型,approved,人工种子词表
+风力发电,发电技术,approved,人工种子词表
+太阳能发电,发电技术,approved,人工种子词表
+新型电力系统,电力系统,approved,人工种子词表
+新型储能,储能技术,approved,人工种子词表
+动力电池,部件,approved,人工种子词表
+电池管理系统,控制系统,approved,人工种子词表
+

@@ -1,0 +1,589 @@
+{
+  "taxonomy_name": "新能源话题体系候选版",
+  "taxonomy_version": "0.1-discussion",
+  "status": "待人工讨论",
+  "classification_object": "文本主要谈论的新能源技术对象、能源载体或系统对象",
+  "classification_principle": "主树只回答“谈论什么”。政策、市场、安全、标准、教学、情绪、意图、体裁和使用场景不作为主树节点；必要时另行附加横向标签。",
+  "scope_note": "本版本用于形成可讨论的两级主题骨架。根节点之下为一级话题，一级话题之下为二级话题；加上根节点共三级。节点是候选项，可在语料核验后合并、拆分、改名或删除。",
+  "root": {
+    "id": "NE",
+    "name": "新能源",
+    "definition": "围绕太阳能、风能、生物质能、地热能、海洋能、氢能、新型储能及其接入与协同利用所形成的技术对象和系统对象。",
+    "representative_keywords": [
+      "新能源",
+      "可再生能源",
+      "清洁能源",
+      "非化石能源",
+      "能源转型"
+    ],
+    "children": [
+      {
+        "id": "NE_SOLAR",
+        "name": "太阳能",
+        "definition": "以太阳辐射为资源，通过光电转换或光热转换获得电力、热力及其他可利用能源的相关对象。",
+        "representative_keywords": [
+          "太阳能",
+          "太阳辐射",
+          "太阳能利用",
+          "光伏",
+          "光热"
+        ],
+        "children": [
+          {
+            "id": "NE_SOLAR_PV",
+            "name": "光伏发电",
+            "definition": "利用半导体光伏效应把太阳辐射直接转换为电能的电池、组件、设备和发电系统。",
+            "representative_keywords": [
+              "光伏发电",
+              "太阳能电池",
+              "光伏组件",
+              "逆变器",
+              "光伏电站",
+              "分布式光伏"
+            ]
+          },
+          {
+            "id": "NE_SOLAR_THERMAL",
+            "name": "太阳能光热利用",
+            "definition": "通过集热或聚光方式将太阳辐射转换为热能，并用于供热、制冷或发电的技术与系统。",
+            "representative_keywords": [
+              "太阳能集热",
+              "太阳能供热",
+              "光热发电",
+              "聚光太阳能",
+              "槽式光热",
+              "塔式光热"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "NE_WIND",
+        "name": "风能",
+        "definition": "利用风的动能进行发电或其他能量转换的设备、场站和系统。",
+        "representative_keywords": [
+          "风能",
+          "风力发电",
+          "风电机组",
+          "风电场",
+          "风轮",
+          "风资源"
+        ],
+        "children": [
+          {
+            "id": "NE_WIND_ONSHORE",
+            "name": "陆上风电",
+            "definition": "建设在陆地区域的风能资源开发、风电机组和风电场系统。",
+            "representative_keywords": [
+              "陆上风电",
+              "陆上风电场",
+              "山地风电",
+              "低风速风电",
+              "风电机组"
+            ]
+          },
+          {
+            "id": "NE_WIND_OFFSHORE",
+            "name": "海上风电",
+            "definition": "建设在近海或深远海区域的风能开发、海上风电机组及配套输电系统。",
+            "representative_keywords": [
+              "海上风电",
+              "海上风电场",
+              "漂浮式风电",
+              "海上升压站",
+              "海底电缆"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "NE_BIOMASS",
+        "name": "生物质能",
+        "definition": "以农林废弃物、能源植物、有机废弃物等生物质为原料进行热、电、气或液体燃料转化的相关对象。",
+        "representative_keywords": [
+          "生物质能",
+          "农林废弃物",
+          "有机废弃物",
+          "能源植物",
+          "生物质转化"
+        ],
+        "children": [
+          {
+            "id": "NE_BIOMASS_POWER_HEAT",
+            "name": "生物质发电与供热",
+            "definition": "通过燃烧、气化等方式将生物质转化为电力或热力的设备和系统。",
+            "representative_keywords": [
+              "生物质发电",
+              "生物质锅炉",
+              "生物质直燃",
+              "生物质气化",
+              "热电联产",
+              "成型燃料"
+            ]
+          },
+          {
+            "id": "NE_BIOMASS_GAS",
+            "name": "生物质气体燃料",
+            "definition": "由有机原料通过厌氧发酵、气化或提纯等过程获得的沼气、生物天然气等气体能源。",
+            "representative_keywords": [
+              "沼气",
+              "生物天然气",
+              "厌氧发酵",
+              "生物质气化",
+              "沼气提纯"
+            ]
+          },
+          {
+            "id": "NE_BIOMASS_LIQUID",
+            "name": "生物液体燃料",
+            "definition": "由生物质转化得到并用于动力或燃烧的液体燃料及其制备对象。",
+            "representative_keywords": [
+              "生物燃料",
+              "燃料乙醇",
+              "生物柴油",
+              "可持续航空燃料",
+              "纤维素乙醇"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "NE_GEOTHERMAL",
+        "name": "地热能",
+        "definition": "对地球内部热能进行勘探、提取，并用于供热、制冷或发电的相关对象。",
+        "representative_keywords": [
+          "地热能",
+          "地热资源",
+          "地热井",
+          "地源热泵",
+          "地热发电"
+        ],
+        "children": [
+          {
+            "id": "NE_GEOTHERMAL_SHALLOW",
+            "name": "浅层地热利用",
+            "definition": "利用浅层岩土体、地下水或地表水温能进行建筑供暖和制冷的系统。",
+            "representative_keywords": [
+              "浅层地热",
+              "地源热泵",
+              "水源热泵",
+              "土壤源热泵",
+              "地埋管"
+            ]
+          },
+          {
+            "id": "NE_GEOTHERMAL_DEEP",
+            "name": "中深层地热与地热发电",
+            "definition": "开发中深层热储，用于直接供热或通过热力循环发电的技术与系统。",
+            "representative_keywords": [
+              "中深层地热",
+              "干热岩",
+              "增强型地热系统",
+              "地热供暖",
+              "地热发电",
+              "热储"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "NE_OCEAN",
+        "name": "海洋能",
+        "definition": "利用海洋潮汐、潮流、波浪、温差或盐差等自然过程获得能量的相关对象。",
+        "representative_keywords": [
+          "海洋能",
+          "潮汐能",
+          "潮流能",
+          "波浪能",
+          "海洋温差能",
+          "盐差能"
+        ],
+        "children": [
+          {
+            "id": "NE_OCEAN_TIDAL_WAVE",
+            "name": "潮汐能、潮流能与波浪能",
+            "definition": "利用潮位变化、海水流动或海浪运动所携带机械能进行发电的装置和系统。",
+            "representative_keywords": [
+              "潮汐发电",
+              "潮流能",
+              "波浪能",
+              "潮汐电站",
+              "波能装置"
+            ]
+          },
+          {
+            "id": "NE_OCEAN_GRADIENT",
+            "name": "海洋温差能与盐差能",
+            "definition": "利用海水温度梯度或盐度梯度进行能量转换的装置和系统。",
+            "representative_keywords": [
+              "海洋温差能",
+              "温差发电",
+              "盐差能",
+              "渗透压发电",
+              "海水温差"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "NE_HYDROGEN",
+        "name": "氢能",
+        "definition": "围绕氢的制取、储存、运输、加注和能量利用所形成的能源载体与技术系统。",
+        "representative_keywords": [
+          "氢能",
+          "制氢",
+          "储氢",
+          "运氢",
+          "加氢",
+          "氢燃料"
+        ],
+        "children": [
+          {
+            "id": "NE_HYDROGEN_PRODUCTION",
+            "name": "氢气制取",
+            "definition": "通过水电解、化石原料重整、生物过程等路径生产氢气的技术和设备。",
+            "representative_keywords": [
+              "制氢",
+              "电解水制氢",
+              "绿氢",
+              "蓝氢",
+              "灰氢",
+              "电解槽",
+              "可再生能源制氢"
+            ]
+          },
+          {
+            "id": "NE_HYDROGEN_STORAGE_TRANSPORT",
+            "name": "氢气储运与加注",
+            "definition": "氢气压缩、液化、材料储氢、管道或车辆运输以及终端加注的设备和系统。",
+            "representative_keywords": [
+              "高压储氢",
+              "液氢",
+              "固态储氢",
+              "储氢瓶",
+              "输氢管道",
+              "加氢站"
+            ]
+          },
+          {
+            "id": "NE_HYDROGEN_USE",
+            "name": "氢能利用",
+            "definition": "将氢作为燃料、原料或储能介质用于发电、工业、交通等终端的技术对象。",
+            "representative_keywords": [
+              "燃料电池",
+              "氢燃烧",
+              "氢冶金",
+              "氢能发电",
+              "氢能交通",
+              "氢储能"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "NE_STORAGE",
+        "name": "新型储能",
+        "definition": "除传统抽水蓄能外，对电能或其他能量进行储存并按需释放的储能技术、设备和系统。",
+        "representative_keywords": [
+          "新型储能",
+          "储能系统",
+          "储能电站",
+          "长时储能",
+          "充放电",
+          "能量管理系统"
+        ],
+        "children": [
+          {
+            "id": "NE_STORAGE_ELECTROCHEMICAL",
+            "name": "电化学储能",
+            "definition": "通过可逆电化学反应储存和释放电能的电池、管理设备和储能系统。",
+            "representative_keywords": [
+              "电化学储能",
+              "锂离子电池",
+              "钠离子电池",
+              "液流电池",
+              "铅蓄电池",
+              "电池储能系统"
+            ]
+          },
+          {
+            "id": "NE_STORAGE_PHYSICAL",
+            "name": "物理储能",
+            "definition": "利用机械运动、压力场或电磁场等物理形式储存和释放能量的技术与装置。",
+            "representative_keywords": [
+              "压缩空气储能",
+              "飞轮储能",
+              "重力储能",
+              "超级电容",
+              "超导磁储能"
+            ]
+          },
+          {
+            "id": "NE_STORAGE_THERMOCHEMICAL",
+            "name": "储热与化学储能",
+            "definition": "以显热、潜热、热化学反应或化学能载体方式储存并释放能量的技术与系统。",
+            "representative_keywords": [
+              "储热",
+              "熔盐储热",
+              "相变储能",
+              "热化学储能",
+              "氢储能",
+              "合成燃料储能"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "NE_POWER_SYSTEM",
+        "name": "新能源电力系统",
+        "definition": "以高比例新能源发电接入、输送、调节和利用为核心的电网侧及用户侧系统对象。",
+        "representative_keywords": [
+          "新型电力系统",
+          "新能源并网",
+          "新能源消纳",
+          "源网荷储",
+          "电网调度",
+          "灵活性资源"
+        ],
+        "children": [
+          {
+            "id": "NE_POWER_GRID_CONNECTION",
+            "name": "新能源并网与输送",
+            "definition": "新能源电源接入电网并实现安全送出的并网控制、电能变换和输电系统。",
+            "representative_keywords": [
+              "新能源并网",
+              "并网逆变器",
+              "柔性直流输电",
+              "新能源送出",
+              "电能质量",
+              "构网型变流器"
+            ]
+          },
+          {
+            "id": "NE_POWER_INTEGRATION",
+            "name": "新能源消纳与调节",
+            "definition": "通过预测、调度、储能、需求响应和灵活性资源提升新能源利用水平的系统。",
+            "representative_keywords": [
+              "新能源消纳",
+              "弃风弃光",
+              "功率预测",
+              "需求响应",
+              "调峰",
+              "调频",
+              "灵活性"
+            ]
+          },
+          {
+            "id": "NE_POWER_DISTRIBUTED",
+            "name": "分布式能源与微电网",
+            "definition": "在配电侧或用户侧就近配置分布式电源、储能和负荷并协调运行的能源系统。",
+            "representative_keywords": [
+              "分布式能源",
+              "微电网",
+              "园区能源",
+              "户用光伏",
+              "虚拟电厂",
+              "源网荷储一体化"
+            ]
+          },
+          {
+            "id": "NE_POWER_MULTI_ENERGY",
+            "name": "多能互补与综合能源系统",
+            "definition": "对电、热、冷、气、氢等多种能源进行协同转换、供应和优化的系统。",
+            "representative_keywords": [
+              "多能互补",
+              "综合能源系统",
+              "冷热电联供",
+              "电氢耦合",
+              "能源互联网",
+              "综合能源服务"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "boundary_candidates": [
+    {
+      "id": "BOUNDARY_HYDROPOWER",
+      "name": "常规水电与抽水蓄能",
+      "definition": "水力发电和抽水蓄能通常属于可再生能源或电力调节资源，但是否纳入“新能源”主树取决于项目采用的领域口径。",
+      "representative_keywords": [
+        "水力发电",
+        "水电站",
+        "小水电",
+        "抽水蓄能",
+        "水轮机"
+      ],
+      "review_suggestion": "先作为边界候选保留；若语料大量使用“新能源与可再生能源”的宽口径，可升级为主树节点。"
+    },
+    {
+      "id": "BOUNDARY_NUCLEAR",
+      "name": "核能",
+      "definition": "核裂变、核聚变及核电系统属于非化石能源，但在不同政策、产业和学科语境中是否归入“新能源”存在口径差异。",
+      "representative_keywords": [
+        "核能",
+        "核电",
+        "核裂变",
+        "核聚变",
+        "小型模块化反应堆"
+      ],
+      "review_suggestion": "默认不并入主树，待根据语料范围和专家口径决定是否纳入。"
+    },
+    {
+      "id": "BOUNDARY_NEV",
+      "name": "新能源汽车",
+      "definition": "以电力、氢等新型动力为核心的车辆、动力系统和补能设施；与新能源高度相关，但可单独形成汽车领域话题树。",
+      "representative_keywords": [
+        "新能源汽车",
+        "纯电动汽车",
+        "插电式混合动力汽车",
+        "燃料电池汽车",
+        "动力电池",
+        "充换电设施"
+      ],
+      "review_suggestion": "建议作为相邻独立体系，通过氢能利用、分布式能源等关联关系连接，不直接并入本主树。"
+    }
+  ],
+  "cross_cutting_dimensions": [
+    {
+      "id": "DIM_PRINCIPLE",
+      "name": "原理与机理",
+      "definition": "描述某一主题对象的基本概念、工作原理和作用机制。",
+      "representative_keywords": [
+        "原理",
+        "机理",
+        "基本概念",
+        "能量转换",
+        "工作过程"
+      ]
+    },
+    {
+      "id": "DIM_MATERIAL_EQUIPMENT",
+      "name": "材料、部件与装备",
+      "definition": "描述构成某一新能源对象的材料、零部件、设备及其结构。",
+      "representative_keywords": [
+        "材料",
+        "部件",
+        "设备",
+        "装备",
+        "结构",
+        "元器件"
+      ]
+    },
+    {
+      "id": "DIM_DESIGN_MANUFACTURING",
+      "name": "设计、制造与建设",
+      "definition": "描述某一新能源对象的设计、工艺、制造、施工和工程建设。",
+      "representative_keywords": [
+        "系统设计",
+        "制造工艺",
+        "生产线",
+        "工程建设",
+        "安装调试"
+      ]
+    },
+    {
+      "id": "DIM_OPERATION_PERFORMANCE",
+      "name": "运行、维护与性能",
+      "definition": "描述某一新能源对象的运行控制、维护检修、效率、性能和测试评价。",
+      "representative_keywords": [
+        "运行",
+        "运维",
+        "维护",
+        "效率",
+        "性能",
+        "测试"
+      ]
+    },
+    {
+      "id": "DIM_SAFETY_STANDARD",
+      "name": "安全、可靠性与标准",
+      "definition": "描述某一新能源对象的风险防护、故障可靠性、标准规范、检测和认证。",
+      "representative_keywords": [
+        "安全",
+        "可靠性",
+        "故障",
+        "标准",
+        "检测",
+        "认证"
+      ]
+    },
+    {
+      "id": "DIM_POLICY_MARKET",
+      "name": "政策、产业与市场",
+      "definition": "描述作用于某一新能源对象的政策法规、产业链、市场规模、企业竞争和商业模式。",
+      "representative_keywords": [
+        "政策",
+        "法规",
+        "产业链",
+        "市场",
+        "企业",
+        "商业模式"
+      ]
+    },
+    {
+      "id": "DIM_ENVIRONMENT_RECYCLING",
+      "name": "环境影响与循环利用",
+      "definition": "描述某一新能源对象的碳排放、生态环境影响、生命周期及废弃物回收利用。",
+      "representative_keywords": [
+        "碳排放",
+        "环境影响",
+        "生命周期",
+        "回收",
+        "循环利用",
+        "退役"
+      ]
+    }
+  ],
+  "excluded_label_types": [
+    {
+      "id": "EXCL_INTENT",
+      "name": "意图",
+      "definition": "提问、比较、推荐、解释、预测等表达目的，不作为新能源话题节点。",
+      "representative_keywords": [
+        "是什么",
+        "为什么",
+        "怎么做",
+        "哪个好",
+        "请推荐"
+      ]
+    },
+    {
+      "id": "EXCL_GENRE",
+      "name": "体裁",
+      "definition": "新闻、教材、报告、论文、标准等文献形式，不作为新能源话题节点。",
+      "representative_keywords": [
+        "新闻",
+        "教材",
+        "研究报告",
+        "论文",
+        "白皮书"
+      ]
+    },
+    {
+      "id": "EXCL_SENTIMENT",
+      "name": "情绪与立场",
+      "definition": "支持、反对、担忧、乐观等态度倾向，不作为新能源话题节点。",
+      "representative_keywords": [
+        "支持",
+        "反对",
+        "担忧",
+        "乐观",
+        "质疑"
+      ]
+    },
+    {
+      "id": "EXCL_SCENARIO",
+      "name": "场景与受众",
+      "definition": "课堂、考试、企业培训、家庭使用等使用环境或受众，不作为新能源话题节点。",
+      "representative_keywords": [
+        "课堂",
+        "考试",
+        "培训",
+        "家庭",
+        "园区"
+      ]
+    }
+  ]
+}

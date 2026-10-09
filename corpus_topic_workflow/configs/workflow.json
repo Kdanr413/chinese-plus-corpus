@@ -1,0 +1,31 @@
+{
+  "schema_version": "3.0",
+  "sampling": {
+    "sample_size": 800,
+    "anchor_ratio": 0.3,
+    "seed": 20260817
+  },
+  "execution": {
+    "python_executable": ""
+  },
+  "review": {
+    "agreement_audit_ratio": 0.1,
+    "low_confidence_threshold": 0.75
+  },
+  "gates": {
+    "max_outlier_rate": 0.3,
+    "min_cluster_coverage": 0.9,
+    "min_sentence_coverage": 0.8,
+    "max_unknown_rate": 0.15,
+    "max_out_of_scope_false_acceptance_rate": 0.05,
+    "max_noise_leakage_rate": 0.02,
+    "max_uncertain_sentence_rate": 0.1,
+    "max_unresolved_conflict_rate": 0.05,
+    "max_human_override_rate": 0.1,
+    "max_new_topic_rate": 0.03,
+    "min_level1_agreement": 0.95,
+    "min_full_path_agreement": 0.8,
+    "min_anchor_stability": 0.8,
+    "required_consecutive_rounds": 2
+  }
+}

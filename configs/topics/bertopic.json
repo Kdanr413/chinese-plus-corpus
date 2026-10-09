@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "method": "BERTopic",
+  "embedding_model": "BAAI/bge-small-zh-v1.5",
+  "min_analysis_characters": 40,
+  "max_analysis_characters": 4000,
+  "random_seed": 20260817,
+  "umap": {
+    "n_neighbors": 15,
+    "n_components": 5,
+    "min_dist": 0.0,
+    "metric": "cosine"
+  },
+  "hdbscan": {
+    "min_topic_size_floor": 10,
+    "min_topic_size_ratio": 0.005,
+    "min_samples_floor": 5
+  },
+  "representation": {
+    "analyzer": "char",
+    "ngram_range": [1, 3],
+    "top_words": 20,
+    "center_samples": 5,
+    "random_samples": 5,
+    "boundary_samples": 3
+  },
+  "stability_random_seeds": [20260817, 20260831, 20260913],
+  "notes": [
+    "章节为默认聚类单位；短于 min_analysis_characters 的章节进入排除审计。",
+    "字符 n-gram 用于中文主题表示；正式发布前仍需完成多随机种子稳定性比较。",
+    "聚类数量由 HDBSCAN 数据驱动产生，不以参考体系节点数为目标。"
+  ]
+}

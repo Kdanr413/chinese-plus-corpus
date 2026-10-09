@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0",
+  "analysis_units": {
+    "narrative": "sentence",
+    "dialogue": "dialogue_turn",
+    "term_candidates_per_unit": 12
+  },
+  "term_extraction": {
+    "extractors": [
+      {"id": "evaluated_grammar_bcc", "enabled": true, "options": {"config": "configs/term_recognition/recognition.json", "trusted_terms": "configs/term_recognition/trusted_terms.csv"}},
+      {"id": "legacy_statistical", "enabled": false, "options": {"config": "configs/term_extraction.json", "role": "topic_keyword_support_and_rollback_only"}},
+      {"id": "legacy_llm_consensus", "enabled": false, "options": {"requires_saved_results": true}},
+      {"id": "legacy_knowledge_seed", "enabled": false, "options": {"knowledge_tables_optional": true}}
+    ]
+  },
+  "topic_identification": {
+    "mode": "auto",
+    "unknown_enabled": true,
+    "new_topic_enabled": true
+  },
+  "topic_discovery_naming": {
+    "enabled": false,
+    "prompt": "configs/prompts/recognition/topic_discovery_naming/v1.json"
+  },
+  "validation": {
+    "models": [
+      {
+        "id": "local_primary",
+        "provider": "openai_compatible",
+        "model_env": "RECOGNITION_MODEL",
+        "model_version_env": "RECOGNITION_MODEL_VERSION",
+        "base_url_env": "RECOGNITION_BASE_URL",
+        "api_key_env": "RECOGNITION_API_KEY",
+        "weight": 1.0,
+        "enabled": true
+      }
+    ],
+    "strategy": "majority",
+    "min_validators": 1
+  },
+  "term_validation": {
+    "enabled": true,
+    "prompt": "configs/prompts/recognition/term_validation/v1.1.0.json"
+  },
+  "term_model_extraction": {
+    "enabled": true,
+    "prompt": "configs/prompts/recognition/term_sentence_extraction/v1.json"
+  },
+  "topic_validation": {
+    "enabled": true,
+    "prompt": "configs/prompts/recognition/topic_validation/v1.2.0.json"
+  },
+  "cross_validation": {
+    "enabled": true,
+    "prompt": "configs/prompts/recognition/term_topic_cross_validation/v1.json"
+  },
+  "decision": {
+    "auto_accept_rule": "term_accept AND topic_accept AND cross_accept",
+    "manual_review_rule": "any_review OR any_uncertain OR any_conflict"
+  }
+}

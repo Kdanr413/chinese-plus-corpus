@@ -1,0 +1,21 @@
+{
+  "method": "paper_informed_llm_consensus_plus_rule_validation",
+  "method_reference": "inputs/method_references/基于生成式大语言模型的术语自动抽取研究_金铭达.pdf",
+  "prompt_strategy": "domain_explicit_few_shot_without_chain_of_thought",
+  "llm_repetitions": 5,
+  "llm_min_consensus": 2,
+  "max_llm_tasks": 5000,
+  "min_length": 2,
+  "max_length": 6,
+  "min_frequency": 8,
+  "min_document_frequency": 2,
+  "max_candidates": 2000,
+  "weights": {
+    "c_value": 0.45,
+    "context_entropy": 0.20,
+    "document_coverage": 0.15,
+    "heading_evidence": 0.15,
+    "domain_specificity": 0.05,
+    "llm_consensus": 0.35
+  }
+}

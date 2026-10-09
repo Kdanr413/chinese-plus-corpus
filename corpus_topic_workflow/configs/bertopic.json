@@ -1,0 +1,96 @@
+{
+  "schema_version": "2.0",
+  "method": "BERTopic",
+  "embedding_model": "BAAI/bge-small-zh-v1.5",
+  "random_seed": 20260817,
+  "bertopic": {
+    "calculate_probabilities": true,
+    "verbose": true
+  },
+  "input": {
+    "min_analysis_characters": 11,
+    "max_analysis_characters": 4000,
+    "exclude_structural_noise": true,
+    "structural_noise_exact": [
+      "参考文献", "参考资料", "文献", "目录", "摘要", "关键词", "关键字",
+      "致谢", "作者简介", "附录"
+    ],
+    "structural_noise_regex": ["^附录[A-Za-z0-9一二三四五六七八九十]*$"]
+  },
+  "sampling": {
+    "enabled": true,
+    "sample_size": 800,
+    "strategy": "balanced_systematic",
+    "seed": 20260817
+  },
+  "dimensionality_reduction": {
+    "method": "umap",
+    "pca": {"n_components": 25, "whiten": false},
+    "umap": {
+      "n_neighbors": 15,
+      "n_components": 5,
+      "min_dist": 0.0,
+      "metric": "cosine",
+      "low_memory": true,
+      "import_timeout_seconds": 60,
+      "numba_cache_dir": ".cache/numba"
+    }
+  },
+  "clustering": {
+    "min_cluster_size": 10,
+    "min_samples": 2,
+    "metric": "euclidean",
+    "cluster_selection_method": "leaf",
+    "cluster_selection_epsilon": 0.0,
+    "prediction_data": true
+  },
+  "representation": {
+    "ngram_range": [1, 2],
+    "min_df": 2,
+    "max_df": 1.0,
+    "top_words": 15,
+    "center_samples": 5,
+    "boundary_samples": 3,
+    "reference_candidate_limit": 5,
+    "bm25_weighting": true,
+    "reduce_frequent_words": true
+  },
+  "matching": {
+    "weights": {"vector": 0.5, "approved_terms": 0.25, "taxonomy_keywords": 0.2, "hierarchy": 0.05},
+    "cluster_match_threshold": 0.46,
+    "unit_match_threshold": 0.48,
+    "unit_review_threshold": 0.34,
+    "unit_margin_threshold": 0.04,
+    "vector_evidence_threshold": 0.65,
+    "dimension_threshold": 0.5,
+    "dimension_vector_threshold": 0.72,
+    "secondary_score_window": 0.15,
+    "max_secondary_topics": 3,
+    "max_dimensions": 2,
+    "unit_candidate_limit": 8,
+    "dimension_candidate_limit": 4,
+    "stored_candidate_limit": 8
+  },
+  "workflow": {
+    "default_stage": "taxonomy_build",
+    "cluster_prior": {
+      "enabled": true,
+      "weight": 0.25,
+      "minimum_score": 0.4,
+      "vector_evidence_threshold": 0.65,
+      "score_window": 0.12,
+      "max_topics": 3
+    }
+  },
+  "stability_random_seeds": [20260817, 20260831, 20260913],
+  "notes": [
+    "本文件是话题识别模型参数的唯一长期维护入口；命令行参数只用于临时实验覆盖。",
+    "输入含 sentence_id 时自动采用单句聚类；当前 min_analysis_characters=11，即只保留长度严格大于10字的例句；不足长度或命中结构性标题规则的句子进入排除审计。",
+    "当前默认使用 UMAP；Numba 缓存固定写入项目内 .cache/numba，避免 Conda 的只读 site-packages 目录导致 pynndescent 导入阻塞。",
+    "当前采用平衡聚类参数 min_cluster_size=10、min_samples=2；匹配阈值适度放宽，并最多保留5个审核候选、3个兼类话题。",
+    "中文主题表示采用领域词保护、独立清洗分词、词级 n-gram 和改进 c-TF-IDF。",
+    "聚类数量由 HDBSCAN 数据驱动产生，不以参考体系节点数为目标；正式发布前仍需比较多随机种子稳定性。",
+    "默认先运行 taxonomy_build：在簇级判断倾向话题并审核体系；体系稳定后再用 --stage sentence_classification 正式分类单句。",
+    "正式分类将簇级倾向按 weight=0.25 作为加分先验；句子自身证据仍可覆盖簇主话题，并保留最多3个兼类话题。"
+  ]
+}

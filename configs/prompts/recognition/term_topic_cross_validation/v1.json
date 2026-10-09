@@ -1,0 +1,23 @@
+{
+  "prompt_id": "recognition.term_topic_cross_validation",
+  "prompt_version": "1.0.0",
+  "name": "术语—话题双向交叉验证",
+  "system_prompt": "你是术语与话题关系验证器。必须分别检查 Term→Topic 和 Topic→Term，不得只拼接两类独立验证结果。返回符合输出结构的 JSON。",
+  "task_instruction": "判断候选术语集合能否支持话题，话题语境能否支持各术语的领域意义，并指出冲突术语、缺失的预期术语和可能的修订。",
+  "input_schema": {
+    "required": ["document", "validated_terms", "validated_topic"],
+    "properties": {
+      "document": "Document",
+      "validated_terms": "TermCandidate[]",
+      "validated_topic": "TopicCandidate",
+      "topic_definition": "string",
+      "context": "object"
+    }
+  },
+  "output_schema": {
+    "required": ["decision", "term_supports_topic", "topic_supports_terms", "reason", "evidence"],
+    "decision": ["accept", "review", "reject", "uncertain"],
+    "optional": ["semantic_consistency", "conflicting_terms", "missing_expected_terms", "possible_topic_revision", "possible_term_revision"]
+  },
+  "changelog": "1.0.0：建立术语—话题双向交叉验证契约。"
+}

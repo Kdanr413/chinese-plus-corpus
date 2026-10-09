@@ -1,0 +1,10 @@
+.env
+runtime/
+runtime-win64.zip
+*.zip
+*.pyc
+__pycache__/
+.cache/
+.pytest_cache/
+data/
+logs/
