@@ -1,0 +1,74 @@
+{
+  "output_dir": "../../data/raw/web",
+  "user_agent": "Mozilla/5.0 (compatible; ChinesePlusNEVCorpusBot/0.1; corpus research)",
+  "delay_seconds": 1.0,
+  "timeout_seconds": 20,
+  "max_pages_per_site": 30,
+  "max_depth": 2,
+  "keywords": [
+    "新能源汽车",
+    "电动汽车",
+    "纯电动",
+    "插电式混合动力",
+    "插电混动",
+    "燃料电池汽车",
+    "动力电池",
+    "充电桩",
+    "充电站",
+    "换电站",
+    "车用动力电池",
+    "汽车工业经济运行",
+    "新能源公交",
+    "充换电"
+  ],
+  "sites": [
+    {
+      "name": "miit",
+      "allowed_domains": [
+        "www.miit.gov.cn"
+      ],
+      "seeds": [
+        "https://www.miit.gov.cn/"
+      ]
+    },
+    {
+      "name": "govcn_policy",
+      "allowed_domains": [
+        "www.gov.cn"
+      ],
+      "seeds": [
+        "https://www.gov.cn/zhengce/"
+      ]
+    },
+    {
+      "name": "caam",
+      "allowed_domains": [
+        "www.caam.org.cn",
+        "caam.org.cn"
+      ],
+      "seeds": [
+        "http://www.caam.org.cn/"
+      ]
+    },
+    {
+      "name": "evcipa",
+      "allowed_domains": [
+        "www.evcipa.org.cn",
+        "evcipa.org.cn"
+      ],
+      "seeds": [
+        "https://www.evcipa.org.cn/"
+      ]
+    },
+    {
+      "name": "ccgp",
+      "allowed_domains": [
+        "www.ccgp.gov.cn",
+        "ccgp.gov.cn"
+      ],
+      "seeds": [
+        "https://www.ccgp.gov.cn/"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+term,canonical_term,aliases,term_type,status,source,topic_node_ids,term_weight,term_role
+新能源,新能源,清洁能源|非化石能源,能源类型,approved,人工种子词表,NE,0.7,related
+风力发电,风力发电,风电,发电技术,approved,人工种子词表,NE_WIND,1.0,core
+太阳能发电,太阳能发电,太阳能,发电技术,approved,人工种子词表,NE_SOLAR,1.0,core
+新型电力系统,新型电力系统,,电力系统,approved,人工种子词表,NE_POWER_SYSTEM,1.0,core
+新型储能,新型储能,储能系统|储能电站,储能技术,approved,人工种子词表,NE_STORAGE,1.0,core
+动力电池,动力电池,动力蓄电池,部件,approved,R0001新能源范围复核,DYN_842963ED1C53,1.0,core
+电池管理系统,电池管理系统,BMS,控制系统,approved,R0001新能源范围复核,DYN_842963ED1C53,1.0,core
+新能源汽车动力系统,新能源汽车动力系统,电驱动|驱动电机|混合动力|插电式混合动力|再生制动,车辆动力系统,approved,R0001体系复核,DYN_2C578413B98C,1.0,core
+充换电基础设施,充换电基础设施,充电桩|充电站|换电站|充电网络|充电服务,补能设施,approved,R0001体系复核,DYN_D82C915934AB,1.0,core
+动力电池回收,动力电池回收,废旧动力电池|梯次利用|电池拆解|综合利用,电池循环利用,approved,R0001体系复核,DYN_842963ED1C53,1.0,core
+新能源汽车市场推广,新能源汽车市场推广,新能源汽车下乡|新能源汽车产销|新能源汽车销量|以旧换新,市场推广,approved,R0001体系复核,DYN_F559745216FD,1.0,core
+新能源汽车产业政策,新能源汽车产业政策,行业准入|产品公告|技术标准|认证检测,产业治理,approved,R0001体系复核,DYN_F349AB38774A,1.0,core

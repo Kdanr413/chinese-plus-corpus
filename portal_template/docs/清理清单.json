@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-09",
+  "removed": [
+    "base_file",
+    "data/raw (old contents)",
+    "data/interim (old contents)",
+    "data/processed (old contents)",
+    "data/curated (old contents)",
+    "data/review (old contents)",
+    "data/releases (old contents)",
+    "data/workspaces (old contents)",
+    "data/pa",
+    "data/portal-acceptance",
+    "old caches/reports/logs",
+    "delivery_tools",
+    "参考文件中心/填写示例",
+    "参考文件中心/当前使用文件说明.md",
+    "docs/维护参考",
+    "docs/在线部署学习记录.md",
+    "docs/专门语料库完整加工方案.md",
+    "docs/专门用途语料库构建技术报告.md",
+    "docs/阶段*.md",
+    "vendor/jieba/lac_small",
+    "inputs/method_references/research PDF",
+    "old shared data/extracted runtimes",
+    "temporary package builds"
+  ],
+  "preserved": [
+    "existing account and user project",
+    ".env",
+    ".git",
+    "current runtime dependencies/licences",
+    "current guides/templates/configs",
+    "tests/deployment"
+  ],
+  "old_main_database_rows_removed": 5443463,
+  "regression": {
+    "total": 275,
+    "passed": 267,
+    "skipped": 8
+  },
+  "doctor": "passed",
+  "live_checks": "two real project workers and native-index isolation passed",
+  "packages": "CRC/SHA256/privacy and alternating real native queries passed",
+  "github_updated": true
+}

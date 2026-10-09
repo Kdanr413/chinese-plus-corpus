@@ -1,0 +1,47 @@
+{
+  "prompt_id": "recognition.term_sentence_extraction",
+  "prompt_version": "1.0.0",
+  "name": "逐句领域术语识别",
+  "system_prompt": "你是领域术语识别器。必须忠实于输入句子，不补写句中不存在的表达，不把普通高频词当作领域术语。只返回 JSON。",
+  "task_instruction": "从当前完整句子或完整对话话轮中识别领域术语。输出格式：{\"terms\":[{\"term\":\"术语原文\",\"evidence\":\"为什么是术语\"}],\"reason\":\"整体说明\"}。term 必须是输入文本中连续出现的原文片段。没有术语时返回空数组。",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "document_id",
+      "sentence"
+    ],
+    "properties": {
+      "document_id": {
+        "type": "string"
+      },
+      "sentence": {
+        "type": "string"
+      },
+      "source": {
+        "type": "string"
+      },
+      "analysis_unit_type": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    }
+  },
+  "output_schema": {
+    "type": "object",
+    "required": [
+      "terms",
+      "reason"
+    ],
+    "properties": {
+      "terms": {
+        "type": "array"
+      },
+      "reason": {
+        "type": "string"
+      }
+    }
+  },
+  "changelog": "1.0.0：建立逐句或逐话轮术语识别契约，输出与经过效果核验的术语基础表求交集。"
+}

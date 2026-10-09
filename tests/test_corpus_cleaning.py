@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 
-MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "build_clean_corpus_jsonl.py"
+MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "prepare" / "clean.py"
 SPEC = importlib.util.spec_from_file_location("corpus_cleaning", MODULE_PATH)
 corpus_cleaning = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(corpus_cleaning)
@@ -135,6 +135,30 @@ class ExerciseRemovalTests(unittest.TestCase):
         kept, removed = corpus_cleaning.remove_repeated_running_headers(paragraphs)
         self.assertEqual(removed, 1)
         self.assertEqual(kept.count("第一章 动力电池"), 1)
+
+
+class TextGenreTests(unittest.TestCase):
+    def test_multiple_speakers_are_dialogue(self):
+        result = corpus_cleaning.detect_text_genre(
+            "充电站情景对话",
+            ["李老师：请先关闭电源。", "小王：已经关闭了。", "李老师：现在检查充电接口。"],
+        )
+        self.assertEqual(result["text_genre"], "对话")
+        self.assertEqual(result["genre_evidence"]["distinct_speaker_count"], 2)
+
+    def test_prose_is_narrative(self):
+        result = corpus_cleaning.detect_text_genre(
+            "动力电池管理办法",
+            ["动力电池生产企业应当建立产品追溯制度。", "本办法自发布之日起施行。"],
+        )
+        self.assertEqual(result["text_genre"], "记叙文")
+
+    def test_explanatory_colons_are_not_speakers(self):
+        result = corpus_cleaning.detect_text_genre(
+            "技术说明",
+            ["说明：本系统应保持断电。", "示例：充电前检查接口。", "备注：禁止带电操作。"],
+        )
+        self.assertEqual(result["text_genre"], "记叙文")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>API 使用手册 · “中文+”语料库</title>
+  <style>
+    :root{--ink:#172234;--muted:#697487;--line:#dfe2df;--bg:#f3f1ec;--brand:#176a63;--brand-dark:#0f504c;--soft:#e8f1ee;--navy:#111f31;--navy-2:#1a2d43;--gold:#b88b55;--bad:#b1463b;--shadow:0 14px 42px rgba(21,34,49,.08)}*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:24px}body{margin:0;padding-left:290px;background:radial-gradient(circle at 100% 0,#e8efec 0,transparent 34%),var(--bg);color:var(--ink);font:15px/1.7 "Microsoft YaHei UI",system-ui,sans-serif}.rail{position:fixed;inset:0 auto 0 0;width:290px;background:linear-gradient(180deg,var(--navy),#0b1725);color:#fff;padding:26px 20px;overflow:auto}.brand{font-size:19px;font-weight:850;line-height:1.45;margin:0 7px 24px}.rail h2{font-size:11px;color:#8799ad;letter-spacing:.13em;margin:20px 8px 8px}.rail a{display:block;color:#c6d1dd;text-decoration:none;padding:7px 9px;border-radius:8px;font-size:13px}.rail a:hover{background:rgba(255,255,255,.09);color:#fff}.rail .primary-link{color:#e8d5b8;border:1px solid rgba(232,213,184,.24);margin:7px}.shell{max-width:1160px;margin:auto;padding:34px 36px 80px}.hero{background:linear-gradient(130deg,var(--navy-2),#176a63);color:#fff;border-radius:22px;padding:36px 38px;box-shadow:0 20px 55px rgba(17,31,49,.18)}.eyebrow{color:#e8d5b8;font-size:12px;font-weight:850;letter-spacing:.15em}.hero h1{font-size:clamp(30px,5vw,48px);line-height:1.15;margin:8px 0}.hero p{color:#d8e7e5;font-size:16px;max-width:780px}.hero-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.hero-actions a{padding:9px 14px;border-radius:10px;text-decoration:none;font-weight:750}.hero-actions .light{background:#fff;color:var(--navy)}.hero-actions .ghost{border:1px solid rgba(255,255,255,.32);color:#fff}.concepts{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin:18px 0}.concept{background:#fff;border:1px solid var(--line);border-radius:15px;padding:17px;box-shadow:var(--shadow)}.concept b{display:block;margin-bottom:5px}.concept span{color:var(--muted);font-size:13px}.notice{background:#f7f3ea;border-left:4px solid var(--gold);border-radius:12px;padding:15px 17px;margin:18px 0}.group{margin-top:32px}.group-head{display:flex;align-items:end;justify-content:space-between;border-bottom:1px solid #ccd1cd;padding-bottom:10px;margin-bottom:13px}.group-head h2{font-size:24px;margin:0}.group-head p{color:var(--muted);margin:0}.endpoint{background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:16px;margin:12px 0;box-shadow:var(--shadow);overflow:hidden}.endpoint summary{cursor:pointer;list-style:none;padding:17px 19px;display:grid;grid-template-columns:72px minmax(260px,1fr) 1.4fr;gap:13px;align-items:center}.endpoint summary::-webkit-details-marker{display:none}.method{display:inline-grid;place-items:center;padding:4px 7px;border-radius:7px;font:800 12px/1.6 Consolas,monospace;background:#e2f0eb;color:var(--brand-dark)}.method.post{background:#f4eadc;color:#865b25}.path{font:700 13px/1.5 Consolas,monospace;word-break:break-all}.summary{color:#3f4d60}.detail{border-top:1px solid var(--line);padding:19px}.purpose{font-size:16px;margin:0 0 15px}.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}.box{border:1px solid var(--line);border-radius:12px;padding:14px;overflow:auto}.box h3{font-size:14px;margin:0 0 9px}.box p{color:var(--muted);margin:5px 0}.params{width:100%;border-collapse:collapse;font-size:13px}.params th,.params td{text-align:left;border-bottom:1px solid #eceeeb;padding:7px}.params th{color:var(--muted)}code,pre{font-family:Consolas,"Microsoft YaHei UI",monospace}.code{position:relative;background:var(--navy);color:#dce7eb;border-radius:11px;padding:14px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.65}.copy{float:right;border:1px solid var(--line);border-radius:8px;background:#fff;padding:5px 9px;cursor:pointer}.empty{color:var(--muted)}.error{background:#fbecea;color:var(--bad);border-radius:12px;padding:16px;margin-top:18px}@media(max-width:900px){body{padding-left:0}.rail{position:static;width:auto;max-height:none;padding:18px}.rail nav{display:none}.brand{margin:0}.shell{padding:20px 15px 60px}.concepts,.meta-grid{grid-template-columns:1fr}.endpoint summary{grid-template-columns:62px 1fr}.endpoint summary .summary{grid-column:1/-1}.hero{padding:28px 23px}}
+  </style>
+  <link rel="stylesheet" href="/assets/ui-polish.css?v=2">
+</head>
+<body>
+  <aside class="rail"><div class="brand">“中文+”语料库<br>API 使用手册</div><a class="primary-link" href="/">返回一体化操作台</a><a class="primary-link" href="/api-reference" target="_blank">打开交互式调试</a><nav id="navigation"><h2>正在读取接口</h2></nav></aside>
+  <main class="shell">
+    <section class="hero"><div class="eyebrow">DEVELOPER GUIDE</div><h1>从用途出发理解每一个 API</h1><p>这里不仅列出参数，还说明接口处在“上传—加工—验证—发布—检索”链路的哪个位置、什么时候调用，以及请求和返回值怎样使用。</p><div class="hero-actions"><a class="light" href="#api-list">浏览全部接口</a><a class="ghost" href="/openapi.json" target="_blank">查看 OpenAPI JSON</a></div></section>
+    <section class="concepts"><article class="concept"><b>基础地址 Base URL</b><span>本机开发环境为 <code>http://127.0.0.1:8000</code>。公网部署后替换域名，路径保持不变。</span></article><article class="concept"><b>数据格式 JSON</b><span>查询接口返回 JSON；下载接口返回 TXT、CSV、JSONL 或 ZIP 文件。</span></article><article class="concept"><b>权限 Authentication</b><span>公开检索接口可直接调用；操作台写接口在未配置令牌时仅允许服务器本机访问。</span></article></section>
+    <div class="notice"><b>推荐给其他使用者的稳定入口：</b>先调用 <code>GET /api/v1/corpora</code> 和版本接口确定检索对象，再调用 <code>GET /api/v1/search</code> 或 <code>GET /api/v1/kwic</code>。带有“操作台内部接口”的 API 主要服务本机管理页面，不建议第三方程序长期依赖。</div>
+    <section id="api-list"><div id="content">正在读取 OpenAPI 规范……</div></section>
+  </main>
+  <script>
+    const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+    const groupNames={'System':'服务状态','Corpus Registry':'语料库与版本','Corpus Search':'语料检索','Corpus Export':'成果导出','Platform Operations':'平台发布','Recognition Workflow':'识别、验证与人工复核','recognition':'识别、验证与人工复核','Workbench / 操作台内部接口':'操作台内部接口'};
+    const guide={
+      '/health':'确认 FastAPI 进程是否正常。监控程序、启动脚本和人工排错都应先调用它；该接口不访问数据库。',
+      '/api/v1/corpora':'读取 PostgreSQL Registry 中已登记的语料库。客户端用返回的 corpus_key 或 id 继续选择版本。',
+      '/api/v1/corpora/{corpus_id}/versions':'列出指定语料库的所有版本及 searchable、status、Release 路径等状态。corpus_id 来自语料库列表，不需要最终用户手输。',
+      '/api/v1/search':'使用 Registry 定位 Release，再调用 LangSC.BCC 执行频率检索。q 支持普通词语和 BCC 检索式。',
+      '/api/v1/kwic':'执行 KWIC 上下文检索，返回命中语料片段、来源、总量和分页结果，适合网页呈现真实语境。',
+      '/api/v1/exports/structured':'校验已发布 Corpus Release 后，将 manifest 和原始结构化语料打包为 ZIP 下载，不改变 GB18030 正文。',
+      '/api/v1/platform/status':'汇总当前加工任务、发布任务、建议版本号和能否发布，供操作台恢复页面状态。',
+      '/api/v1/platform/publish':'启动后台发布：复用或构建 BCC 索引、创建不可默认覆盖的 Release、登记 PostgreSQL 并启用版本。',
+      '/api/v1/platform/publish-status':'轮询发布后台任务的进度、当前步骤、结果或错误。调用 publish 后应定期读取，直到 running=false。',
+      '/api/v1/recognition/runs':'GET 用于列出历史识别任务；POST 用于启动“话题—术语—交叉验证—综合决策”任务。',
+      '/api/v1/recognition/status':'读取当前识别任务进度。操作台借此显示正在执行的模块及失败原因。',
+      '/api/v1/recognition/prompt-stages':'取得清洗、话题、术语和交叉检验四个步骤的正式提示词、版本及必需上下文。',
+      '/api/v1/recognition/prompt-stages/{stage}':'保存指定步骤的新提示词版本。正式任务随后使用新版本，旧版本文件继续保留以便追溯。',
+      '/api/v1/recognition/prompt-stages/{stage}/test':'用一条可读语料和参考知识测试提示词，返回每个模型的原始反馈和聚合判断，但不启动批量加工。',
+      '/api/v1/recognition/runs/{run_id}':'默认只返回任务摘要和各类记录数量，避免大语料一次性占满内存。小规模任务可添加 include_evidence=true；大规模证据请使用 artifacts/exports 分阶段下载。',
+      '/api/v1/recognition/decisions/{decision_id}/review':'提交人工确认、修改话题、修改术语、新增/合并话题或拒识；自动结果不会被覆盖，人工来源另行保存。',
+      '/api/v1/recognition/runs/{run_id}/activate':'确认该任务的人工审核已完成，把 approved 结果提供给后续语料标注与结构化步骤。',
+      '/api/v1/recognition/runs/{run_id}/approved':'下载该任务最终确认的教学资源 JSONL。未通过或尚待复核的候选不会进入文件。',
+      '/api/v1/recognition/runs/{run_id}/artifacts/{kind}':'按 kind 下载话题表、术语表、交叉验证记录或最终定稿成果。最终成果存在未完成复核时会返回 409。',
+      '/api/v1/recognition/runs/{run_id}/exports/{asset}':'兼容性导出入口，用 asset 选择识别阶段表格或 approved 话题、术语成果。',
+      '/api/bootstrap':'一次读取本地工作台配置、既有结果摘要及任务状态，用于页面首次加载。',
+      '/api/status':'轮询传统 corpus_pipeline 清洗、分词、结构化和句法树任务。',
+      '/api/prompts':'读取传统流程仍需兼容的提示词配置。新识别流程优先使用 /api/v1/recognition/prompt-stages。',
+      '/api/raw-corpus':'分页列出已经上传的原始文件、来源、大小与是否纳入本次加工。',
+      '/api/preview':'在允许的数据目录内安全读取文本预览；大文件只返回开头内容，不修改原文件。',
+      '/api/download':'下载允许目录内的原始文件或加工成果。path 必须是项目数据根目录下的相对路径。',
+      '/api/structured-artifacts':'列出步骤5当前已经存在的结构化语料、句法树语料和标注明细，发布前即可使用。',
+      '/api/upload':'上传一个语料或处理资源。多文件上传由客户端逐文件调用，并使用相同 batch_id 保持批次关系。',
+      '/api/run':'按 steps 启动传统 corpus_pipeline 的清洗、分词、结构化或句法树步骤；任务异步执行。',
+      '/api/prompts/save':'保存传统流程提示词，主要保留旧工作台兼容能力。',
+      '/api/prompts/test':'使用一条样本测试传统流程提示词，主要用于兼容旧测试入口。',
+      '/api/raw-corpus/{action}':'改变上传文件是否参与本次加工。新页面使用 select（选择）和 unselect（取消选择）；exclude、restore 作为兼容旧工作台的同义动作继续保留。',
+      '/api/review/continue':'确认传统话题或术语审核门已经完成并继续旧流程；新的追溯式人工复核使用 recognition review API。'
+    };
+    const examples={
+      '/health':'curl http://127.0.0.1:8000/health',
+      '/api/v1/corpora':'curl http://127.0.0.1:8000/api/v1/corpora',
+      '/api/v1/corpora/{corpus_id}/versions':'curl http://127.0.0.1:8000/api/v1/corpora/语料库UUID/versions',
+      '/api/v1/search':'curl "http://127.0.0.1:8000/api/v1/search?q=招聘&corpus_key=chinese-plus&limit=20"',
+      '/api/v1/kwic':'curl "http://127.0.0.1:8000/api/v1/kwic?q=招聘&corpus_key=chinese-plus&limit=20&page=0&window=50"',
+      '/api/v1/exports/structured':'curl -o corpus.zip "http://127.0.0.1:8000/api/v1/exports/structured?corpus_key=chinese-plus&version=版本号"',
+      '/api/v1/platform/publish':'curl -X POST http://127.0.0.1:8000/api/v1/platform/publish -H "Content-Type: application/json" -d "{\\"version\\":\\"0.3.0\\",\\"make_default\\":true}"',
+      '/api/v1/recognition/decisions/{decision_id}/review':'curl -X POST http://127.0.0.1:8000/api/v1/recognition/decisions/决策UUID/review -H "Content-Type: application/json" -d "{\\"reviewer\\":\\"reviewer-name\\",\\"action\\":\\"confirm\\",\\"reason\\":\\"人工核对原文与模型证据后一致\\",\\"after_state\\":{}}"',
+      '/api/preview':'curl "http://127.0.0.1:8000/api/preview?path=data%2Fraw%2Fmanual%2Fexample.txt"'
+    };
+    function schemaText(value){return value?JSON.stringify(value,null,2):'无请求体'}
+    function paramRows(params){if(!params?.length)return '<div class="empty">这个接口没有路径或查询参数。</div>';return `<table class="params"><thead><tr><th>参数</th><th>位置</th><th>必填</th><th>类型 / 默认值</th><th>说明</th></tr></thead><tbody>${params.map(p=>`<tr><td><code>${esc(p.name)}</code></td><td>${esc(p.in)}</td><td>${p.required?'是':'否'}</td><td>${esc(p.schema?.type||p.schema?.format||'object')}${p.schema?.default!==undefined?' / '+esc(p.schema.default):''}</td><td>${esc(p.description||p.schema?.description||'由调用场景决定')}</td></tr>`).join('')}</tbody></table>`}
+    function requestExample(path,method){return examples[path]||`curl -X ${method.toUpperCase()} "http://127.0.0.1:8000${path}"`}
+    function endpointHtml(path,method,op){const body=op.requestBody?.content?.['application/json']?.schema||op.requestBody?.content?.['application/octet-stream']?.schema;const responses=Object.entries(op.responses||{}).map(([code,r])=>`${code}：${r.description||'响应'}`).join('\n');return `<details class="endpoint"><summary><span class="method ${method}">${method.toUpperCase()}</span><span class="path">${esc(path)}</span><span class="summary">${esc(op.summary||op.operationId)}</span></summary><div class="detail"><p class="purpose">${esc(guide[path]||op.description||op.summary||'该接口属于当前语料库平台服务。')}</p><div class="meta-grid"><section class="box"><h3>参数 Parameters</h3>${paramRows(op.parameters)}</section><section class="box"><button class="copy" data-copy="${esc(requestExample(path,method))}">复制</button><h3>调用示例</h3><pre class="code">${esc(requestExample(path,method))}</pre></section><section class="box"><h3>请求体 Request Body</h3><pre class="code">${esc(schemaText(body))}</pre></section><section class="box"><h3>返回状态 Responses</h3><pre class="code">${esc(responses||'200：成功')}</pre></section></div></div></details>`}
+    (async()=>{try{const response=await fetch('/openapi.json'),spec=await response.json();if(!response.ok)throw new Error('OpenAPI 规范读取失败');const groups={};for(const [path,methods] of Object.entries(spec.paths||{}))for(const [method,op] of Object.entries(methods)){if(!['get','post','put','patch','delete'].includes(method))continue;const tag=op.tags?.[0]||'其他接口';(groups[tag]??=[]).push({path,method,op})}const nav=document.querySelector('#navigation'),content=document.querySelector('#content');nav.innerHTML='';content.innerHTML='';let index=0;for(const [tag,items] of Object.entries(groups)){const id=`group-${index++}`,name=groupNames[tag]||tag;nav.insertAdjacentHTML('beforeend',`<a href="#${id}">${esc(name)} <small>(${items.length})</small></a>`);content.insertAdjacentHTML('beforeend',`<section id="${id}" class="group"><div class="group-head"><h2>${esc(name)}</h2><p>${items.length} 个接口</p></div>${items.map(x=>endpointHtml(x.path,x.method,x.op)).join('')}</section>`)}document.querySelectorAll('[data-copy]').forEach(button=>button.onclick=async()=>{await navigator.clipboard.writeText(button.dataset.copy);button.textContent='已复制';setTimeout(()=>button.textContent='复制',1200)})}catch(error){document.querySelector('#content').innerHTML=`<div class="error">${esc(error.message)}</div>`}})();
+  </script>
+</body>
+</html>

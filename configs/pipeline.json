@@ -1,0 +1,113 @@
+{
+  "project": {
+    "name": "我的语料库",
+    "domain": "新能源与新能源汽车",
+    "corpus_id": "chinese-plus"
+  },
+  "paths": {
+    "manual_sources": "data/raw/manual",
+    "web_sources": "data/raw/web",
+    "inventory": "data/interim/inventory",
+    "corpus_output": "data/processed/corpus",
+    "topic_output": "data/processed/topics",
+    "term_output": "data/processed/terms",
+    "cleaning_audit_output": "data/interim/cleaning_audit",
+    "linguistic_output": "data/processed/linguistic",
+    "governance_output": "data/interim/governance",
+    "index_output": "data/processed/index",
+    "reports_root": "reports",
+    "workspaces_root": "data/workspaces",
+    "releases_root": "data/releases"
+  },
+  "collection": {
+    "enabled_in_all": false,
+    "config": "configs/collect/websites.json"
+  },
+  "cleaning": {
+    "config": "configs/cleaning.json",
+    "inventory_file": "data/interim/inventory/corpus_inventory_details.csv",
+    "exclusion_manifest": "data/raw/corpus_exclusions.csv"
+  },
+  "topics": {
+    "reference_taxonomy": "configs/topics/new_energy_candidate_taxonomy.json",
+    "config": "configs/topics/bertopic.json",
+    "mode": "auto",
+    "discovery_backend": "legacy_bertopic",
+    "use_llm": false,
+    "processing_order": [
+      "classification_when_topic_table_exists",
+      "discovery_when_topic_table_is_empty",
+      "independent_topic_validation",
+      "optional_human_review"
+    ],
+    "reference_documents": "inputs/domain/reference_documents.csv"
+  },
+  "workflow": {
+    "corpus_version": "0.1.0-draft",
+    "corpus_format_version": "bcc-doc-global-group-item/1.0",
+    "pipeline_version": "1.0",
+    "search_engine_version": "LangSC.BCC 2.0.7",
+    "manual_version": "V1.12",
+    "release_level": "internal_draft",
+    "run_collection_in_complete": false,
+    "previous_version": "",
+    "processing_order": [
+      "cleaning",
+      "topic_identification_and_validation",
+      "term_extraction_and_validation",
+      "term_topic_cross_validation",
+      "annotation_and_structuring",
+      "release_index_registry"
+    ],
+    "index_reuse_when_input_unchanged": true
+  },
+  "governance": {
+    "coverage_targets": "configs/governance/coverage_targets.csv",
+    "source_rights": "configs/governance/source_rights.csv"
+  },
+  "linguistic": {
+    "input_root": "inputs/linguistic",
+    "domain_lexicon": "inputs/linguistic/domain_lexicon.csv",
+    "terminology": "inputs/linguistic/terminology.csv",
+    "segmentation_notes": "inputs/linguistic/segmentation_notes.csv",
+    "jieba_user_dict": "inputs/linguistic/jieba_user_dict.txt",
+    "discovered_terminology": "data/curated/terms/terminology.csv",
+    "curated_term_variants": "data/curated/terms/term_variants.csv",
+    "discovered_jieba_dict": "data/curated/terms/segmentation_dictionary.txt",
+    "stop_terms": "inputs/linguistic/stop_terms.txt",
+    "general_reference_frequency": "inputs/linguistic/general_reference_frequency.csv",
+    "segmenter": "jieba",
+    "fallback_mode": "jieba_default",
+    "max_review_candidates": 500
+  },
+  "term_extraction": {
+    "config": "configs/term_extraction.json",
+    "clustering_config": "configs/terms/clustering.json",
+    "requires_curated_taxonomy": "data/curated/topics/taxonomy.json",
+    "few_shot_examples": "inputs/term_extraction/few_shot_examples.jsonl",
+    "llm_results": "inputs/term_extraction/llm_results.jsonl",
+    "llm_responses": "data/interim/term_extraction/llm_response_records.jsonl",
+    "method_registry": "inputs/method_references/method_reference_registry.csv",
+    "interim_output": "data/interim/term_extraction"
+  },
+  "quality": {
+    "max_exact_duplicate_rate": 0.01,
+    "max_orphan_rate": 0.0,
+    "require_zero_index_errors": true
+  },
+  "index": {
+    "item_level": "genre_aware",
+    "file_name": "corpus_index.txt",
+    "syntax_tree_file_name": "corpus_index_syntax_tree.txt",
+    "encoding": "gb18030",
+    "reject_reserved_metadata_chars": true
+  },
+  "syntax_tree": {
+    "enabled": true,
+    "base_url": "http://202.112.194.64:5000",
+    "endpoint": "/struct_by_tokens",
+    "timeout_seconds": 30,
+    "max_attempts": 3,
+    "max_tokens_per_request": 100
+  }
+}

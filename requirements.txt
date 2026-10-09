@@ -1,0 +1,16 @@
+jieba==0.42.1
+fastapi==0.141.1
+uvicorn==0.52.4
+httpx==0.28.1
+pydantic>=2.12,<3
+psycopg[binary]>=3.2,<4
+python-dotenv>=1,<2
+# Existing Corpus Search Engine; includes platform-native BCC libraries.
+LangSC==2.0.7
+# Topic discovery and term-context analysis. Kept in the single authoritative
+# dependency list so a fresh installation can run the complete fixed workflow.
+bertopic>=0.17,<0.18
+sentence-transformers>=3,<4
+umap-learn>=0.5.7,<0.6
+hdbscan>=0.8.40,<0.9
+scikit-learn>=1.5,<2

@@ -1,0 +1,124 @@
+{
+  "min_characters": 2,
+  "max_characters": 14,
+  "max_phrase_tokens": 8,
+  "minimum_corpus_frequency": 2,
+  "generic_terminal_words": [
+    "比例",
+    "水平",
+    "能力",
+    "情况",
+    "方面",
+    "问题",
+    "工作",
+    "任务",
+    "要求",
+    "目标",
+    "行动",
+    "方案"
+  ],
+  "nested_short_term": {
+    "minimum_independent_occurrences": 2,
+    "boundary_stability_threshold": 0.8,
+    "long_form_context_ratio_threshold": 0.8,
+    "context_sentence_window": 1,
+    "concept_suffixes": [
+      "能源",
+      "电池",
+      "系统",
+      "技术",
+      "工艺",
+      "材料",
+      "设备",
+      "发电",
+      "储能",
+      "资源化",
+      "利用"
+    ]
+  },
+  "boundary_audit_focus_fragments": [
+    "大力发",
+    "大力发展",
+    "大力发展新",
+    "大力发展新能",
+    "发展新能源",
+    "新能源"
+  ],
+  "bcc_general_frequency": {
+    "enabled": true,
+    "endpoint": "http://202.112.194.64:18890",
+    "channel": "multifield",
+    "api_key_env": "BCC_API_KEY",
+    "batch_size": 50,
+    "timeout_seconds": 60,
+    "max_queries_per_run": 300,
+    "max_query_characters": 8,
+    "minimum_domain_occurrences": 2,
+    "common_count_threshold": 50000
+  },
+  "noun_pos_prefixes": [
+    "n",
+    "vn",
+    "eng"
+  ],
+  "modifier_pos_prefixes": [
+    "a",
+    "an",
+    "b"
+  ],
+  "candidate_grammar": {
+    "profile_file": "grammar_profiles.json",
+    "tokenizer_lexicon": [
+      {
+        "term": "并网",
+        "pos": "vn"
+      },
+      {
+        "term": "离网",
+        "pos": "vn"
+      },
+      {
+        "term": "调峰",
+        "pos": "vn"
+      },
+      {
+        "term": "调频",
+        "pos": "vn"
+      },
+      {
+        "term": "削峰",
+        "pos": "vn"
+      },
+      {
+        "term": "填谷",
+        "pos": "vn"
+      }
+    ],
+    "default_profile": "general_nominal",
+    "profile_override": "",
+    "domain_field": "domain",
+    "domain_profile_map": {
+      "能源": "engineering_process",
+      "环境": "engineering_process",
+      "制造": "engineering_process",
+      "汽车": "engineering_process",
+      "医学": "biomedical_state",
+      "生物": "biomedical_state",
+      "政策": "policy_governance",
+      "法律": "policy_governance",
+      "治理": "policy_governance"
+    }
+  },
+  "generic_terms": [
+    "工作",
+    "问题",
+    "方面",
+    "方法",
+    "方式",
+    "发展",
+    "推进",
+    "建设",
+    "进行",
+    "大力发展"
+  ]
+}

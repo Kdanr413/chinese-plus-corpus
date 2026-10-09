@@ -1,0 +1,62 @@
+# Generated validation datasets and reports
+/validation_clean_v*/
+/validation_topics_v*/
+
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Local secrets and machine-specific settings
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.previous
+*.bak
+*.log
+
+# Editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Large source archives, vendored runtimes, and user-maintained inputs
+/base_file/
+/vendor/
+/inputs/*
+!/inputs/README.md
+!/inputs/*/
+/inputs/*/*
+!/inputs/*/README.md
+
+# Corpus data and generated outputs (keep only directory-level README files)
+/data/*
+!/data/README.md
+/reports/*
+!/reports/README.md
+/archive/
+/normalized/
+
+# Local databases, container volumes, backups, and deployment state
+*.sqlite
+*.sqlite3
+/.docker-data/
+/volumes/
+/backups/
+/deploy/.env
+
+/deliveries/
+
+/delivery_tools/
+
+/portal_template/
+
+# Per-project compiler caches (generated, never release assets)
+/.cache/

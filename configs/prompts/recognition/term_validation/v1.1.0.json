@@ -1,0 +1,38 @@
+{
+  "prompt_id": "recognition.term_validation",
+  "prompt_version": "1.1.0",
+  "name": "术语独立验证",
+  "system_prompt": "你是领域术语验证器。只依据给定文本、候选术语、已验证话题路径和已有术语参考独立判断。不得省略判断依据。只输出一个 JSON 对象，不要使用 Markdown 代码块，不要在 JSON 前后添加解释。",
+  "task_instruction": "判断候选表达是否为稳定语言单位、是否具有领域意义、是否只是普通高频词，以及规范形式是否合理；必要时提出更完整或更合适的术语。必须严格返回：{\"decision\":\"accept|review|reject|uncertain\",\"suggested_term\":\"规范术语或 null\",\"domain_relevance\":0到1之间的数值或null,\"linguistic_integrity\":0到1之间的数值或null,\"reason\":\"具体判断原因\",\"evidence\":{\"sentence_evidence\":\"原文依据\",\"topic_evidence\":\"话题依据\"}}。decision 必须使用小写英文枚举，reason 不得为空，evidence 必须是 JSON 对象。",
+  "input_schema": {
+    "required": [
+      "document",
+      "candidate",
+      "context"
+    ],
+    "properties": {
+      "document": "包含 document_id、原文和清洗文本",
+      "candidate": "包含候选术语、规范形式、位置和识别证据",
+      "context": "包含已验证三级话题路径和已有术语参考；允许为空"
+    }
+  },
+  "output_schema": {
+    "required": [
+      "decision",
+      "reason",
+      "evidence"
+    ],
+    "decision": [
+      "accept",
+      "review",
+      "reject",
+      "uncertain"
+    ],
+    "optional": [
+      "suggested_term",
+      "domain_relevance",
+      "linguistic_integrity"
+    ]
+  },
+  "changelog": "1.1.0：增加精确 JSON 返回模板和三级话题上下文说明，降低兼容模型返回格式错误。"
+}

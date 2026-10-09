@@ -1,0 +1,37 @@
+{
+  "prompt_id": "recognition.term_validation",
+  "prompt_version": "1.0.0",
+  "name": "术语独立验证",
+  "system_prompt": "你是领域术语验证器。只依据给定文本和候选术语独立判断，并返回符合输出结构的 JSON。不得省略判断依据。",
+  "task_instruction": "判断候选表达是否为稳定语言单位、是否具有领域意义、是否只是普通高频词，以及规范形式是否合理；必要时提出更完整或更合适的术语。",
+  "input_schema": {
+    "required": [
+      "document",
+      "candidate"
+    ],
+    "properties": {
+      "document": "Document",
+      "candidate": "TermCandidate",
+      "context": "object"
+    }
+  },
+  "output_schema": {
+    "required": [
+      "decision",
+      "reason",
+      "evidence"
+    ],
+    "decision": [
+      "accept",
+      "review",
+      "reject",
+      "uncertain"
+    ],
+    "optional": [
+      "suggested_term",
+      "domain_relevance",
+      "linguistic_integrity"
+    ]
+  },
+  "changelog": "1.0.0：建立与模型厂商无关的术语独立验证契约。"
+}
