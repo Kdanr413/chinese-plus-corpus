@@ -16,10 +16,13 @@ if match:MARKERS.append(match.group(1))
 def put(path,text):
  path.parent.mkdir(parents=True,exist_ok=True);path.write_text(text,encoding='utf-8')
 def sanitize(text):
+ # The user explicitly publishes this repository URL; preserve it while scrubbing personal Git metadata.
+ repository_url='https://github.com/Kdanr413/chinese-plus-corpus'
+ text=text.replace(repository_url,'__PUBLISHED_REPOSITORY_URL__')
  text=re.sub(r'[A-Za-z]:[\\/]+Users[\\/]+[^\\/\s"\']+','<USER_HOME>',text,flags=re.I)
  for marker in MARKERS:text=text.replace(marker,'[REDACTED]')
  if SECRET.search(text):raise ValueError('Potential credential in distribution source')
- return text
+ return text.replace('__PUBLISHED_REPOSITORY_URL__',repository_url)
 def scrub(value):
  if isinstance(value,dict):return {k:('' if k.lower() in {'api_key','password','access_token','refresh_token','client_secret'} else scrub(v)) for k,v in value.items()}
  if isinstance(value,list):return [scrub(v) for v in value]
@@ -58,6 +61,6 @@ def verify(root):
   relative=path.relative_to(root)
   if path.name=='.env' or any(x in {'.git','__pycache__','runtime'} for x in relative.parts):raise ValueError('Private/generated file included')
   text=path.read_text(encoding='utf-8-sig',errors='ignore')
-  if SECRET.search(text) or re.search(r'[A-Za-z]:[\\/]+Users[\\/]+Administrator',text,re.I) or any(x in text for x in MARKERS):raise ValueError('Private content included: '+str(relative))
+  if SECRET.search(text) or re.search(r'[A-Za-z]:[\\/]+Users[\\/]+Administrator',text,re.I) or any(x in text.replace('https://github.com/Kdanr413/chinese-plus-corpus','') for x in MARKERS):raise ValueError('Private content included: '+str(relative))
   count+=1
  return count
