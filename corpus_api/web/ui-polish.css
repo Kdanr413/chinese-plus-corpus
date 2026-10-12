@@ -196,3 +196,30 @@ body:has(.shell) .endpoint, body:has(.shell) .concept, body:has(.shell) .paper {
   body:has(.layout) .badge { display: inline-block; margin-top: 6px; }
   .query-row { grid-template-columns: 1fr; }
 }
+
+/* Grouped model settings: scoped to the construction configuration panel. */
+.model-options-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+.model-options-eyebrow { display:block; margin-bottom:4px; color:var(--ui-brand); font-size:11px; font-weight:750; letter-spacing:.12em; }
+.model-options-heading h2 { margin:0; }
+.model-baseline-badge { display:inline-flex; align-items:center; gap:7px; padding:7px 12px; border:1px solid #cfe3da; border-radius:999px; color:var(--ui-brand-dark); background:#eff7f3; font-size:12px; font-weight:650; }
+.model-baseline-badge input { margin:0; accent-color:var(--ui-brand); }
+.model-options-intro { max-width:850px; margin:14px 0 20px; color:var(--ui-muted); font-size:13px; line-height:1.8; }
+.model-settings-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.35fr) minmax(0,1fr); grid-template-areas:"clean term cross"; gap:14px; align-items:stretch; }
+.model-option-card { min-width:0; padding:18px; border:1px solid var(--ui-line); border-radius:14px; background:linear-gradient(145deg,#fcfdfc,#f6f9f7); }
+.model-cleaning-card { grid-area:clean; }.model-term-card { grid-area:term; }.model-cross-card { grid-area:cross; }
+.model-option-heading { display:flex; align-items:center; gap:9px; margin-bottom:16px; }
+.model-option-heading h3 { margin:0; font-size:15px; letter-spacing:0; }
+.model-step { display:grid; place-items:center; width:27px; height:27px; border:1px solid #d3e4dc; border-radius:8px; background:#eaf3ee; color:var(--ui-brand); font-size:11px; font-weight:750; }
+.model-optional-tag { margin-left:auto; padding:2px 7px; border-radius:6px; color:var(--ui-muted); background:#e9eeeb; font-size:11px; }
+.model-switch { display:flex; justify-content:space-between; align-items:center; gap:12px; min-height:66px; padding:12px; border:1px solid #d9e3de; border-radius:10px; background:#fff; cursor:pointer; }
+.model-switch b { display:block; font-size:13px; }.model-switch small { display:block; margin-top:3px; color:var(--ui-muted); font-size:11px; }
+.model-switch input { appearance:none; -webkit-appearance:none; flex:none; margin:0; width:36px; height:21px; border:1px solid #c1cdc7; border-radius:20px; background:#d9e1dd; cursor:pointer; position:relative; transition:background .18s; }
+.model-switch input::before { content:""; position:absolute; width:15px; height:15px; left:2px; top:2px; background:#fff; border-radius:50%; box-shadow:0 1px 3px #0002; transition:transform .18s; }
+.model-switch input:checked { background:var(--ui-brand); border-color:var(--ui-brand); }.model-switch input:checked::before { transform:translateX(15px); }
+.model-switch:has(input:checked) { background:#f0f8f4; border-color:#8bb6a8; }.model-switch:focus-within { box-shadow:0 0 0 3px #126a6112; }
+.model-option-card .field { font-size:12px; gap:7px; }.model-option-card select,.model-option-card input[type="number"] { min-width:0; height:42px; padding:8px 10px; font-size:13px; font-weight:500; }
+.model-consensus-grid { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(90px,1fr); gap:10px; margin-top:12px; }
+.model-option-note { margin:13px 0 0; color:var(--ui-muted); font-size:12px; line-height:1.8; }
+.model-options-panel .model-box { margin-top:18px; border-top:1px solid var(--ui-line); padding-top:18px; }
+@media (max-width:1150px) { .model-settings-grid { grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-areas:"clean cross" "term term"; }.model-term-card .model-consensus-grid { grid-template-columns:minmax(0,2fr) minmax(100px,1fr); } }
+@media (max-width:620px) { .model-settings-grid { grid-template-columns:1fr; grid-template-areas:"clean" "term" "cross"; }.model-option-card { padding:15px; }.model-baseline-badge { font-size:11px; }.model-options-intro { margin-bottom:16px; }.model-consensus-grid { grid-template-columns:minmax(0,1.5fr) minmax(95px,1fr); } }
