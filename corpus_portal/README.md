@@ -138,6 +138,10 @@ python -m corpus_platform portal import-release --project PROJECT_UUID --source 
 | PORTAL_TEMPLATE | portal_template | 干净模板目录 |
 | PORTAL_MAX_WORKERS | 4 | 同时运行的项目工作台进程数，按内存调整 |
 | PORTAL_LLM_ALLOWED_HOSTS | api.openai.com | 管理员允许的模型 API 域名，逗号分隔；只允许 HTTPS 的 443 端口 |
+
+模型测试前会先保存当前项目的模型与步骤配置。若提示“模型接口域名……尚未获准使用”，说明请求在平台校验阶段被拦截，尚未调用模型，也不能据此判断 API Key 或模型是否有效。管理员应核对实际接口网址，在项目根目录 `.env` 的 `PORTAL_LLM_ALLOWED_HOSTS` 中添加其域名（仅域名，不含协议和路径；多个域名用英文逗号分隔），然后重启平台及项目工作服务。服务器部署时修改部署环境变量并重启服务。只添加自己实际使用并信任的服务域名。
+
+例如使用官方 DeepSeek 接口时可配置 `PORTAL_LLM_ALLOWED_HOSTS=api.openai.com,api.deepseek.com`；第三方接口需要填写该第三方的实际域名，不能根据模型名称推断。刷新页面后重新填写或确认模型，点击保存，再测试对应步骤。`DeepSeek-V4.1-Flash` 这类带点号的名称可填写在“模型名称”栏；本地模型标识则使用字母、数字、下划线或连字符。
 | TOPIC_WORKFLOW_PYTHON | 空 | 包含 BERTopic 等依赖的服务器 Python 完整路径；用户不能指定其他程序 |
 
 每账号最多 5 个项目。门户单次请求最多 64 MiB，较大批次请拆分。上传入口按项目已用文件大小检查 10 GiB 上传额度；加工衍生文件和 ZIP 解压可能继续增长，这不是磁盘硬配额。登录会话有效 12 小时，账号或来源失败尝试达到阈值后暂时限制登录。

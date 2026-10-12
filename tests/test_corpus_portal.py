@@ -17,6 +17,29 @@ from corpus_delivery.search import create_app as search_app
 from corpus_api.service import CorpusService,SearchEngineCache
 from corpus_releases import create_workspace,create_release
 
+class PayloadErrorsTests(unittest.TestCase):
+    def test_model_host_error_is_specific_without_credentials(self):
+        from corpus_portal.workspaces import PayloadValidationError,validate_json_payload
+        body=json.dumps({'models':[{'model':'DeepSeek-V4.1-Flash','base_url':'https://model.example/v1','api_key':'PRIVATE-TEST-KEY'}]})
+        with patch.dict('os.environ',{'PORTAL_LLM_ALLOWED_HOSTS':'api.openai.com'}):
+            with self.assertRaises(PayloadValidationError) as failure:
+                validate_json_payload(body,Path.cwd(),set())
+        message=str(failure.exception)
+        self.assertIn('model.example',message)
+        self.assertIn('PORTAL_LLM_ALLOWED_HOSTS',message)
+        self.assertNotIn('PRIVATE-TEST-KEY',message)
+
+    def test_permitted_provider_model_name_and_malformed_address(self):
+        from corpus_portal.workspaces import PayloadValidationError,validate_json_payload
+        with patch.dict('os.environ',{'PORTAL_LLM_ALLOWED_HOSTS':'model.example'}):
+            validate_json_payload(json.dumps({'models':[{'model':'DeepSeek-V4.1-Flash','base_url':'https://model.example/v1'}]}),Path.cwd(),set())
+            for address in ['https://model.example:bad/v1','https://user:SECRET@model.example/v1','http://model.example/v1']:
+                with self.assertRaises(PayloadValidationError) as failure:
+                    validate_json_payload(json.dumps({'base_url':address}),Path.cwd(),set())
+                self.assertNotIn('SECRET',str(failure.exception))
+        with self.assertRaises(PayloadValidationError):
+            validate_json_payload(b'{broken',Path.cwd(),set())
+
 class FakeStore:
     def __init__(self):
         self.users={'alice':uuid.uuid4(),'bob':uuid.uuid4()};self.sessions={};self.projects={};self.shares={}

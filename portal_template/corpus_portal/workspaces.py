@@ -10,6 +10,17 @@ from urllib.parse import urlsplit
 
 ROOT=Path(__file__).resolve().parents[1]
 
+class PayloadValidationError(ValueError):
+    """A safe, user-facing explanation without request secrets or paths."""
+
+def validate_json_payload(body, project_root, allowed_python):
+    try:
+        payload=json.loads(body)
+    except (ValueError,TypeError,UnicodeError):
+        raise PayloadValidationError('请求内容不是有效的 JSON，请刷新页面后重试') from None
+    verify_payload(payload,project_root,allowed_python)
+    return payload
+
 @dataclass
 class PortalSettings:
     storage: Path
@@ -58,21 +69,27 @@ def verify_payload(payload, project_root, allowed_python):
     if not isinstance(payload,dict): return
     for key,value in payload.items():
         if key=='base_url' and value:
-            url=urlsplit(str(value))
+            try:
+                url=urlsplit(str(value))
+                port=url.port
+            except ValueError:
+                raise PayloadValidationError('模型接口地址格式无效，请填写完整的 HTTPS 地址') from None
             hosts={x.strip().lower() for x in os.getenv('PORTAL_LLM_ALLOWED_HOSTS','api.openai.com').split(',') if x.strip()}
-            if url.scheme!='https' or url.hostname not in hosts or url.username or url.password or url.port not in {None,443}:
-                raise ValueError('模型接口必须使用管理员允许的 HTTPS 服务地址')
+            if url.scheme!='https' or not url.hostname or url.username or url.password or port not in {None,443}:
+                raise PayloadValidationError('模型接口必须使用 HTTPS 的 443 端口，地址中不能包含账号或密码')
+            if url.hostname.lower() not in hosts:
+                raise PayloadValidationError('模型接口域名 '+url.hostname+' 尚未获准使用；请管理员将该域名加入 PORTAL_LLM_ALLOWED_HOSTS 并重启平台后重试')
         elif key=='model_id' and value:
             if not re.fullmatch(r'[A-Za-z0-9_-]{1,120}',str(value)):
-                raise ValueError('模型标识只能包含英文字母、数字、下划线或连字符')
+                raise PayloadValidationError('模型标识只能包含英文字母、数字、下划线或连字符；模型名称请填写在模型名称栏')
         elif key=='python_executable' and value:
             if str(Path(str(value)).resolve()) not in allowed_python:
-                raise ValueError('运行环境由服务器管理，不能指定其他可执行程序')
+                raise PayloadValidationError('运行环境由服务器管理，不能指定其他可执行程序')
         elif key in {'source_path','topic_table_path'} and value:
             path=Path(str(value))
             path=(path if path.is_absolute() else project_root/path).resolve()
             if not path.is_relative_to(project_root.resolve()):
-                raise ValueError('不能读取其他项目或服务器目录中的语料')
+                raise PayloadValidationError('不能读取其他项目或服务器目录中的语料')
         elif isinstance(value,dict): verify_payload(value,project_root,allowed_python)
         elif isinstance(value,list):
             for item in value:

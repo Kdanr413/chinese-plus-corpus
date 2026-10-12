@@ -5,7 +5,7 @@ import os
 import secrets
 import sys
 from pathlib import Path
-from .workspaces import verify_payload
+from .workspaces import PayloadValidationError,validate_json_payload
 
 def allowed_python_executables():
     # Use the same administrator-selected or discovered interpreter as the UI.
@@ -47,9 +47,10 @@ def main():
             return JSONResponse({'error':'不可直接访问内部构建服务'},status_code=403)
         if request.method not in {'GET','HEAD','OPTIONS'} and 'json' in request.headers.get('content-type',''):
             try:
-                payload=json.loads(await request.body())
                 allowed=allowed_python_executables()
-                verify_payload(payload,root,allowed)
+                validate_json_payload(await request.body(),root,allowed)
+            except PayloadValidationError as exc:
+                return JSONResponse({'error':str(exc)},status_code=400)
             except (ValueError,TypeError):
                 return JSONResponse({'error':'项目路径或运行参数无效'},status_code=400)
         return await call_next(request)
