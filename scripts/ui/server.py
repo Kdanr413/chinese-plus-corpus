@@ -972,7 +972,7 @@ def build_commands(payload: dict[str, Any], config_path: Path) -> tuple[list[tup
             clean_root = PROJECT_ROOT / "data" / "processed" / "corpus" / "jsonl"
             clean_llm = PROJECT_ROOT / "data" / "processed" / "cleaning_llm"
             commands.append(("生成大模型清洗复核任务（可选）", [python, str(PROJECT_ROOT / "scripts" / "prepare" / "llm_clean_review.py"), "prepare", "--corpus-root", str(clean_root), "--tasks", str(clean_llm / "tasks.jsonl"), "--output-root", str(clean_llm)]))
-            commands.append(("大模型清洗复核（可选）", [python, str(PROJECT_ROOT / "scripts" / "workflow" / "run_validation_llm.py"), "--mode", "cleaning", "--tasks", str(clean_llm / "tasks.jsonl"), "--responses", str(clean_llm / "responses.jsonl"), "--limit", "25000", "--reset", "--require-complete"]));
+            commands.append(("大模型清洗复核（可选）", [python, str(PROJECT_ROOT / "scripts" / "workflow" / "run_validation_llm.py"), "--mode", "cleaning", "--tasks", str(clean_llm / "tasks.jsonl"), "--responses", str(clean_llm / "responses.jsonl"), "--limit", "0", "--reset", "--require-complete"]));
             commands.append(("安全应用大模型清洗建议", [python, str(PROJECT_ROOT / "scripts" / "prepare" / "llm_clean_review.py"), "apply", "--corpus-root", str(clean_root), "--responses", str(clean_llm / "responses.jsonl"), "--output-root", str(clean_llm)]))
     topic_selected = "topics" in steps
     term_selected = "terms" in steps

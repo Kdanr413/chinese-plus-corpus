@@ -24,12 +24,14 @@ def main() -> int:
     parser.add_argument("--mode", choices=["cleaning", "topics", "terms"], required=True)
     parser.add_argument("--tasks", type=Path, required=True)
     parser.add_argument("--responses", type=Path, required=True)
-    parser.add_argument("--limit", type=int, default=100)
+    parser.add_argument("--limit", type=int, default=100, help="本次最多执行的任务数；0 表示处理所有未完成任务")
     parser.add_argument("--require-complete", action="store_true", help="任一任务失败或仍有未执行任务时返回失败")
     parser.add_argument("--reset", action="store_true", help="开始前清空该类任务的旧回复记录")
     parser.add_argument("--max-attempts", type=int, default=3, help="单条任务遇到空回复、解析或临时接口错误时的最多尝试次数")
     parser.add_argument("--prompt-config", type=Path, default=PROJECT_ROOT / "configs" / "llm" / "prompts.json")
     args = parser.parse_args()
+    if args.limit < 0:
+        parser.error('--limit 不能为负数；0 表示不限制任务数')
     prefix = "CLEANING" if args.mode == "cleaning" else ("TOPIC" if args.mode == "topics" else "TERM")
     api_key = os.environ.get(f"{prefix}_LLM_API_KEY", "")
     model = os.environ.get(f"{prefix}_LLM_MODEL", "")
@@ -46,7 +48,7 @@ def main() -> int:
     failed = 0
     with args.responses.open("a", encoding="utf-8") as output:
         for index, task in enumerate(tasks):
-            if str(index) in completed or executed >= args.limit:
+            if str(index) in completed or (args.limit > 0 and executed >= args.limit):
                 continue
             prompt_key = prompt_key_for_task(task, args.mode)
             messages = build_messages(prompt_config["prompts"][prompt_key], task)

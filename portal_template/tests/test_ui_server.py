@@ -163,6 +163,8 @@ class UiServerTests(unittest.TestCase):
         self.assertEqual(labels[0], "语料清洗")
         self.assertEqual(labels[1:], ["生成大模型清洗复核任务（可选）", "大模型清洗复核（可选）", "安全应用大模型清洗建议"])
         self.assertEqual(env["CLEANING_LLM_MODEL"], "demo-model")
+        model_command = commands[2][1]
+        self.assertEqual(model_command[model_command.index('--limit') + 1], '0')
 
     def test_approve_requires_only_definition_boundaries_and_reviewer(self) -> None:
         required = required_review_fields("approve")
