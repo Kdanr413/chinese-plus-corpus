@@ -1,6 +1,7 @@
 """End-to-end recognition coordinator for CLI/API/workbench reuse."""
 
 from __future__ import annotations
+from dataclasses import replace
 
 import hashlib
 import csv
@@ -127,6 +128,10 @@ class RecognitionRunOptions:
     min_validators: int = 1
     cross_validation_enabled: bool = True
     validator_models: tuple[RuntimeValidatorModel, ...] = ()
+    cross_use_external_model: bool | None = None
+    cross_validator_models: tuple[RuntimeValidatorModel, ...] = ()
+    cross_strategy: AggregationStrategy | None = None
+    cross_min_validators: int = 1
     model_name: str = ""
     model_version: str = ""
     base_url: str = ""
@@ -151,6 +156,11 @@ class RecognitionRunOptions:
             raise ValueError("最少有效验证器数量必须大于等于 1")
         if self.use_external_model and not self.validator_models and not self.model_name:
             raise ValueError("启用外部模型时至少配置一个模型")
+        object.__setattr__(self,"cross_validator_models",tuple(row if isinstance(row,RuntimeValidatorModel) else RuntimeValidatorModel(**row) for row in self.cross_validator_models))
+        if self.cross_min_validators < 1: raise ValueError("交叉检验最少有效模型必须大于等于 1")
+        if self.cross_use_external_model and not self.cross_validator_models: raise ValueError("请为交叉检验选择模型")
+        cross_ids=[row.id for row in self.cross_validator_models]
+        if len(cross_ids)!=len(set(cross_ids)): raise ValueError("交叉检验模型 ID 不得重复")
         ids = [row.id for row in self.validator_models]
         if len(ids) != len(set(ids)):
             raise ValueError("模型配置 ID 不得重复")
@@ -191,6 +201,16 @@ class RecognitionCoordinator:
         if required and not path.is_file():
             raise FileNotFoundError(path)
         return path
+
+    @staticmethod
+    def _cross_options(options: RecognitionRunOptions) -> RecognitionRunOptions:
+        if options.cross_use_external_model is None: return options
+        external=options.cross_use_external_model
+        return replace(options,use_external_model=external,
+            validator_models=options.cross_validator_models if external else (),
+            include_builtin_rules=not external,model_name="",model_version="",base_url="",api_key="",
+            strategy=options.cross_strategy or options.strategy,
+            min_validators=options.cross_min_validators if external else 1)
 
     def _providers(self, options: RecognitionRunOptions, kind: str) -> list[object]:
         if not options.machine_validation:
@@ -337,8 +357,10 @@ class RecognitionCoordinator:
         recognition_root = workspace / "recognition"
         recognition_root.mkdir(parents=True, exist_ok=False)
         safe_options = {
-            **{key: value for key, value in options.__dict__.items() if key not in {"api_key", "validator_models"}},
+            **{key: value for key, value in options.__dict__.items() if key not in {"api_key", "validator_models", "cross_validator_models", "cross_strategy"}},
             "strategy": options.strategy.value,
+            "cross_strategy": options.cross_strategy.value if options.cross_strategy else None,
+            "cross_validator_models": [{"id":row.id,"model":row.model,"model_version":row.model_version,"base_url":row.base_url,"weight":row.weight,"api_key":"<not persisted>"} for row in options.cross_validator_models],
             "api_key": "<not persisted>",
             "external_model_configured": bool(options.use_external_model),
             "validator_models": [{
@@ -491,16 +513,16 @@ class RecognitionCoordinator:
 
         notify("topic", 18, f"已产生 {len(topic_candidates)} 个话题候选，正在独立检验")
         topic_run = self.repository.create_validation_run(
-            run_id, validation_kind="topic", aggregation_strategy=options.strategy.value,
-            min_validators=options.min_validators,
-            validator_config=self._provider_snapshot(options),
+            run_id, validation_kind="topic", aggregation_strategy=AggregationStrategy.MAJORITY.value,
+            min_validators=1,
+            validator_config=[{"id":"builtin_rule_baseline","provider":"builtin_rules"}],
         )
         topic_service = TopicValidationService(
             [BuiltinRuleValidatorProvider(
                 self.prompts["term"], self.prompts["topic"], self.prompts["cross"]
             )], prompt=self.prompts["topic"],
-            strategy=options.strategy, min_validators=options.min_validators,
-            weights=self._runtime_weights(options), repository=self.repository,
+            strategy=AggregationStrategy.MAJORITY, min_validators=1,
+            weights={"builtin_rule_baseline":1.0}, repository=self.repository,
         )
         topic_results: dict[str, Any] = {}
         documents_by_id = {document.document_id: document for document in documents}
@@ -761,16 +783,17 @@ class RecognitionCoordinator:
             notify("cross", 74, "人工标注已形成共识，准备运行话题—术语交叉检验")
 
         if options.cross_validation_enabled:
+            cross_options=self._cross_options(options)
             notify("cross", 76, "话题与术语独立识别完成，正在进行可选双向交叉检验")
             cross_run = self.repository.create_validation_run(
-                run_id, validation_kind="cross", aggregation_strategy=options.strategy.value,
-                min_validators=options.min_validators,
-                validator_config=self._provider_snapshot(options),
+                run_id, validation_kind="cross", aggregation_strategy=cross_options.strategy.value,
+                min_validators=cross_options.min_validators,
+                validator_config=self._provider_snapshot(cross_options),
             )
             cross_service: CrossValidationService | None = CrossValidationService(
-                self._providers(options, "cross"), prompt=self.prompts["cross"],
-                strategy=options.strategy, min_validators=options.min_validators,
-                weights=self._runtime_weights(options), repository=self.repository,
+                self._providers(cross_options, "cross"), prompt=self.prompts["cross"],
+                strategy=cross_options.strategy, min_validators=cross_options.min_validators,
+                weights=self._runtime_weights(cross_options), repository=self.repository,
             )
         else:
             notify("cross", 76, "已按配置跳过话题—术语交叉检验")

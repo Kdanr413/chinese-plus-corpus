@@ -55,5 +55,9 @@ Thumbs.db
 
 # Per-project compiler caches (generated, never release assets)
 /.cache/
+
+# Private step-model credentials and verified configuration state
+**/configs/llm/step_models.json
+**/configs/llm/step_models.json.tmp
 /runtime/
 *.zip

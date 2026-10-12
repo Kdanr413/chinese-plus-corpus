@@ -7,7 +7,7 @@
 仓库保持私有，需要登录已获得仓库授权的 GitHub 账号。安装 Git、Conda 和 PostgreSQL，然后在你选择的目录执行：
 
 ```powershell
-git clone https://github.com/[REDACTED]/chinese-plus-corpus.git
+git clone https://github.com/Kdanr413/chinese-plus-corpus.git
 cd chinese-plus-corpus
 conda env create -f environment.yml
 conda activate corpus-platform
@@ -70,3 +70,5 @@ python -m corpus_platform serve --setup
 管理员新增或重置账号：`python -m corpus_platform portal add-user user02`、`python -m corpus_platform portal reset-password user02`。检查：`python -m corpus_platform doctor`；回归方法见 [测试说明](tests/README.md)。
 
 最终交付只有一份完整源码 ZIP及校验记录，与 GitHub 默认分支源码一致，不再分发三套程序或附带核心便携环境。发行维护见 [维护说明](scripts/maintenance/README.md)。第三方许可证见 [第三方声明](THIRD_PARTY_NOTICES.md)，完整多用户说明见 [多用户功能](corpus_portal/README.md)。
+
+步骤模型选择、保存与测试，以及同账号项目名称查重，见 [操作说明](docs/步骤模型配置与项目命名.md)。清洗选择一个明确模型；术语与交叉检验分别选择自己的模型组。

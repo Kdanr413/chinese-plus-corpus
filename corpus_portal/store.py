@@ -1,11 +1,19 @@
 from __future__ import annotations
 import secrets
 import uuid
+import unicodedata
+from psycopg.errors import UniqueViolation
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from corpus_registry.db import connect
 from corpus_registry.config import DatabaseSettings
 from .security import digest, password_hash, password_matches
+
+def normalized_project_name(name):
+    return ' '.join(unicodedata.normalize('NFKC',name).split())
+
+def project_name_key(name):
+    return normalized_project_name(name).casefold()
 
 class PortalStore:
     def __init__(self, settings=None):
@@ -13,6 +21,14 @@ class PortalStore:
     def initialize(self):
         with connect(self.settings) as c:
             c.execute(Path(__file__).with_name('schema.sql').read_text(encoding='utf-8-sig'))
+            c.execute('SELECT id FROM corpus_portal.users ORDER BY id FOR UPDATE')
+            rows=c.execute('SELECT id,owner_id,name,name_key FROM corpus_portal.projects ORDER BY created_at,id FOR UPDATE').fetchall()
+            used={(str(row['owner_id']),row['name_key']) for row in rows if row['name_key'] is not None}
+            for row in rows:
+                key=project_name_key(row['name']);identity=(str(row['owner_id']),key)
+                if row['name_key'] is None and identity not in used:
+                    c.execute('UPDATE corpus_portal.projects SET name_key=%s WHERE id=%s',(key,row['id']))
+                    used.add(identity)
     def has_users(self):
         with connect(self.settings) as c:
             return bool(c.execute("SELECT EXISTS(SELECT 1 FROM corpus_portal.users WHERE active) AS present").fetchone()["present"])
@@ -61,12 +77,20 @@ class PortalStore:
         with connect(self.settings) as c:
             return c.execute('SELECT * FROM corpus_portal.projects WHERE id=%s AND owner_id=%s',(project_id,owner)).fetchone()
     def add_project(self, owner, pid, name):
-        with connect(self.settings) as c:
-            # Serialize account project creation to enforce the small-host quota.
-            c.execute('SELECT id FROM corpus_portal.users WHERE id=%s FOR UPDATE',(owner,))
-            count=c.execute('SELECT count(*) AS count FROM corpus_portal.projects WHERE owner_id=%s',(owner,)).fetchone()['count']
-            if count>=5: raise ValueError('每个账号当前最多创建 5 个项目')
-            c.execute('INSERT INTO corpus_portal.projects(id,owner_id,name) VALUES (%s,%s,%s)',(pid,owner,name))
+        name=normalized_project_name(name)
+        if not name or len(name)>120 or '\x00' in name: raise ValueError('项目名称无效')
+        key=project_name_key(name)
+        try:
+            with connect(self.settings) as c:
+                # The owner row lock serializes duplicate checks and quota checks.
+                c.execute('SELECT id FROM corpus_portal.users WHERE id=%s FOR UPDATE',(owner,))
+                rows=c.execute('SELECT name FROM corpus_portal.projects WHERE owner_id=%s',(owner,)).fetchall()
+                if any(project_name_key(row['name'])==key for row in rows):
+                    raise ValueError('已有同名语料库项目，请重新命名')
+                if len(rows)>=5: raise ValueError('每个账号当前最多创建 5 个项目')
+                c.execute('INSERT INTO corpus_portal.projects(id,owner_id,name,name_key) VALUES (%s,%s,%s,%s)',(pid,owner,name,key))
+        except UniqueViolation as exc:
+            raise ValueError('已有同名语料库项目，请重新命名') from exc
     def add_share(self, owner, project_id, key, version, checksum, expires=None):
         if not self.project(owner,project_id): raise PermissionError('项目不存在或不可访问')
         sid,token=uuid.uuid4(),secrets.token_urlsafe(32)

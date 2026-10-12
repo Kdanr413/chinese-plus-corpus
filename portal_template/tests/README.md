@@ -26,3 +26,5 @@ python -m unittest discover -s tests -v
 完整模型、索引及分享链路由显式工具 `scripts/verify/portal_acceptance.py` 验证，需要设置 `CORPUS_PORTAL_ACCEPTANCE=1`；采用测试话题体系和本机合成句法接口。依赖、清理、报告位置与范围见 [验收说明](../docs/多用户构建与共享验收.md)。
 
 设置 `CORPUS_PORTAL_NATIVE_TEST=1` 后运行 `python -m unittest tests.test_portal_native_search`，可用两个独立生成的真实 BCC 索引交替检查词频与上下文隔离。
+
+步骤模型回归：`python -m unittest tests.test_step_models`。真实前端组合检查：`node tests/check_cleaning_toggle.cjs`（开发验证需 Node.js）。

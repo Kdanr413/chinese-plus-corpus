@@ -3,6 +3,7 @@ import asyncio
 import hmac
 import json
 import re
+import shutil
 import threading
 import uuid
 from contextlib import asynccontextmanager
@@ -16,7 +17,7 @@ from corpus_delivery.catalog import ReleaseCatalog
 from corpus_delivery.search import create_app as create_search_app
 from corpus_api.service import CorpusService, SearchEngineCache
 from .isolated_search import IsolatedSearchEngine
-from .store import PortalStore
+from .store import PortalStore, normalized_project_name, project_name_key
 from .supervisor import WorkerSupervisor
 from .workspaces import PortalSettings, initialize_workspace
 from .security import origin_matches
@@ -95,13 +96,19 @@ def create_app(settings=None,store=None,supervisor=None,share_loader=None):
     @app.post('/_portal/api/projects',status_code=201)
     def new_project(payload:NewProject,request:Request):
         u=user(request)
-        name=payload.name.strip()
+        name=normalized_project_name(payload.name)
         if not name or '\x00' in name: raise HTTPException(400,'项目名称无效')
-        if len(store.list_projects(u['id']))>=5: raise HTTPException(409,'每个账号最多创建 5 个项目')
+        existing=store.list_projects(u['id'])
+        if any(project_name_key(row['name'])==project_name_key(name) for row in existing): raise HTTPException(409,'已有同名语料库项目，请重新命名')
+        if len(existing)>=5: raise HTTPException(409,'每个账号最多创建 5 个项目')
         pid=uuid.uuid4()
+        project_root=settings.project_root(pid)
+        fresh=not project_root.exists()
         initialize_workspace(settings,pid,name)
         try: store.add_project(u['id'],pid,name)
-        except ValueError as exc: raise HTTPException(409,str(exc)) from exc
+        except ValueError as exc:
+            if fresh and project_root.is_relative_to(settings.storage.resolve()) and project_root.exists(): shutil.rmtree(project_root)
+            raise HTTPException(409,str(exc)) from exc
         return {'id':str(pid),'name':name,'workbench_url':f'/p/{pid}/'}
     @app.get('/_portal/api/projects/{pid}/versions')
     def versions(pid:uuid.UUID,request:Request):

@@ -18,6 +18,9 @@ CREATE TABLE IF NOT EXISTS corpus_portal.projects (
     name TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+ALTER TABLE corpus_portal.projects ADD COLUMN IF NOT EXISTS name_key TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS portal_project_owner_name_unique
+ON corpus_portal.projects(owner_id,name_key) WHERE name_key IS NOT NULL;
 CREATE INDEX IF NOT EXISTS portal_project_owner ON corpus_portal.projects(owner_id);
 CREATE TABLE IF NOT EXISTS corpus_portal.shares (
     id UUID PRIMARY KEY,

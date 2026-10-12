@@ -223,3 +223,12 @@ body:has(.shell) .endpoint, body:has(.shell) .concept, body:has(.shell) .paper {
 .model-options-panel .model-box { margin-top:18px; border-top:1px solid var(--ui-line); padding-top:18px; }
 @media (max-width:1150px) { .model-settings-grid { grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-areas:"clean cross" "term term"; }.model-term-card .model-consensus-grid { grid-template-columns:minmax(0,2fr) minmax(100px,1fr); } }
 @media (max-width:620px) { .model-settings-grid { grid-template-columns:1fr; grid-template-areas:"clean" "term" "cross"; }.model-option-card { padding:15px; }.model-baseline-badge { font-size:11px; }.model-options-intro { margin-bottom:16px; }.model-consensus-grid { grid-template-columns:minmax(0,1.5fr) minmax(95px,1fr); } }
+
+.step-model-settings { margin:18px 0; padding:18px; border:1px solid #d3e5dc; border-radius:14px; background:#f5faf7; }
+.step-model-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; align-items:start; }
+.step-model-fields .step-model-choices,.step-model-fields>.row { grid-column:1/-1; }
+.step-model-choices { display:flex; gap:8px; flex-wrap:wrap; }
+.step-model-settings .model-consensus-grid { margin-top:0; }
+.step-model-settings .small { font-size:12px; margin-bottom:0; }
+.step-test-status { margin-left:auto; color:#94713d; font-size:12px; }.step-test-status.verified { color:#126a61; }
+@media(max-width:620px) { .step-model-fields { grid-template-columns:1fr; }.step-model-settings { padding:14px; }.step-model-choices .choice { width:100%; } }

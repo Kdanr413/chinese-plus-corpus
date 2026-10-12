@@ -161,3 +161,5 @@ Remove-Item Env:CORPUS_PORTAL_LIVE_TEST
 ```
 
 服务器文件清单、数据库迁移和 HTTPS 配置见 [部署说明](../deploy/portal/README.md)。
+
+同账号项目名称按规范化结果查重（空白、大小写、全半角）；重复时提示重新命名，不创建额外目录，不自动更改历史名称。步骤模型配置保存在各项目 configs/llm/step_models.json；该文件含私有模型凭据，不随源码发行。详细使用见 [步骤模型配置与项目命名](../docs/步骤模型配置与项目命名.md)。

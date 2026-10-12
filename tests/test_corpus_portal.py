@@ -79,6 +79,15 @@ class PortalTests(unittest.TestCase):
     def share(self):
         r=self.alice.post(f'/_portal/api/projects/{self.pid}/shares',json={'version':'1.0'},headers=self.a)
         self.assertEqual(r.status_code,201,r.text);return r.json()
+    def test_duplicate_name_requires_rename_and_does_not_create_folder(self):
+        before=list((self.settings.storage/'projects').iterdir())
+        response=self.alice.post('/_portal/api/projects',json={'name':'  ＡＬＩＣＥ   project  '},headers=self.a)
+        self.assertEqual(response.status_code,409,response.text)
+        self.assertIn('重新命名',response.json()['detail'])
+        self.assertEqual(list((self.settings.storage/'projects').iterdir()),before)
+        response=self.bob.post('/_portal/api/projects',json={'name':'Alice project'},headers=self.b)
+        self.assertEqual(response.status_code,201,response.text)
+
     def test_account_and_project_isolation(self):
         self.assertEqual(len(self.alice.get('/_portal/api/projects').json()['items']),1)
         self.assertEqual(self.bob.get('/_portal/api/projects').json()['items'],[])

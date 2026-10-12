@@ -33,6 +33,17 @@ def run_check():
                 projects.append(uuid.UUID(result.json()['id']));schemas.append('p_'+projects[-1].hex)
             for index,client in enumerate(clients):
                 pid=projects[index];prefix=f'/p/{pid}'
+                initial=client.get(prefix+'/api/v1/recognition/step-settings')
+                assert initial.status_code==200,initial.text
+                profile=initial.json()
+                profile.pop('tested',None)
+                allowed=os.getenv('PORTAL_LLM_ALLOWED_HOSTS','api.openai.com').split(',')[0].strip()
+                profile['models']=[dict(id='private_model_'+str(index),model='test-only',base_url='https://'+allowed+'/v1',api_key='dummy',weight=1)]
+                saved=client.put(prefix+'/api/v1/recognition/step-settings',json=profile,headers=headers[index])
+                assert saved.status_code==200,saved.text
+                restored=client.get(prefix+'/api/v1/recognition/step-settings')
+                assert restored.json()['models'][0]['id']=='private_model_'+str(index)
+                assert clients[1-index].get(prefix+'/api/v1/recognition/step-settings').status_code==404
                 result=client.get(prefix+'/api/bootstrap')
                 assert result.status_code==200,result.text
                 assert result.json()['project']['name']=='integration '+str(index),result.text

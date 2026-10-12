@@ -7,7 +7,7 @@
 个人主机和服务器统一从已授权的私有仓库拉取：
 
 ```powershell
-git clone https://github.com/[REDACTED]/chinese-plus-corpus.git
+git clone https://github.com/Kdanr413/chinese-plus-corpus.git
 cd chinese-plus-corpus
 ```
 

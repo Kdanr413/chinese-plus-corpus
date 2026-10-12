@@ -11,15 +11,17 @@ import csv
 import io
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Literal
 
 from fastapi import APIRouter, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
+from . import step_models
 from pydantic import BaseModel, ConfigDict, Field
 
 from corpus_recognition import (
     AggregationStrategy,
+    ConfigurableValidationAggregator,
     BuiltinRuleValidatorProvider,
     CrossValidationRequest,
     Document,
@@ -87,12 +89,26 @@ class StartRecognitionRequest(StrictRequest):
     min_validators: int = Field(default=1, ge=1, le=20)
     cross_validation_enabled: bool = True
     validator_models: list[RuntimeValidatorRequest] = Field(default_factory=list, max_length=20)
+    cross_use_external_model: bool | None = None
+    cross_validator_models: list[RuntimeValidatorRequest] = Field(default_factory=list,max_length=20)
+    cross_strategy: AggregationStrategy | None = None
+    cross_min_validators: int = Field(default=1,ge=1,le=20)
     model_name: str = ""
     model_version: str = ""
     base_url: str = ""
     api_key: str = ""
     topic_table_path: str = ""
 
+
+class StepSelectionRequest(StrictRequest):
+    mode: Literal['off','rules','models','hybrid']='rules'
+    model_ids: list[str]=Field(default_factory=list,max_length=20)
+    strategy: AggregationStrategy=AggregationStrategy.MAJORITY
+    min_validators: int=Field(default=1,ge=1,le=20)
+
+class StepSettingsRequest(StrictRequest):
+    models: list[RuntimeValidatorRequest]=Field(default_factory=list,max_length=20)
+    steps: dict[str,StepSelectionRequest]
 
 class HumanReviewRequest(StrictRequest):
     reviewer: str = Field(min_length=1, max_length=160)
@@ -110,6 +126,7 @@ class PromptSentenceTestRequest(StrictRequest):
     topic_level_2: str = Field(default="", max_length=200)
     topic_level_3: str = Field(default="", max_length=200)
     topic_path: str = Field(default="", max_length=1000)
+    min_validators: int = Field(default=1,ge=1,le=20)
     model_name: str = Field(default="", max_length=200)
     model_version: str = Field(default="", max_length=200)
     base_url: str = Field(default="", max_length=1000)
@@ -308,6 +325,20 @@ def _pending_human_review_scopes(bundle: dict[str, Any]) -> list[dict[str, str]]
 @router.post("/runs", status_code=202, summary="启动完整识别与验证流程")
 def start_run(payload: StartRecognitionRequest, request: Request) -> dict[str, Any]:
     require_admin(request)
+    if payload.cross_use_external_model is not None and step_models.settings_path(legacy.PROJECT_ROOT).exists():
+        saved=step_models.read_settings(legacy.PROJECT_ROOT)
+        for stage,enabled,rows,strategy,minimum in [('term',payload.use_external_model,payload.validator_models,payload.strategy,payload.min_validators),('cross',payload.cross_validation_enabled and payload.cross_use_external_model,payload.cross_validator_models,payload.cross_strategy or payload.strategy,payload.cross_min_validators)]:
+            if not enabled:continue
+            try:
+                if step_models.model_signature([x.model_dump(mode='json') for x in rows])!=step_models.model_signature(step_models.selected_models(saved,stage)):raise ValueError('正式运行的模型选择与已保存步骤配置不同')
+                if saved['steps'][stage]['strategy']!=strategy.value or saved['steps'][stage]['min_validators']!=minimum:raise ValueError('正式运行的模型策略与已测试配置不同')
+                step_models.require_verified(legacy.PROJECT_ROOT,stage,_formal_step_prompt(stage))
+            except ValueError as exc:return JSONResponse({'error':str(exc)},status_code=400)
+    option_data = payload.model_dump()
+    option_data["topic_table_path"] = (
+        payload.topic_table_path.strip() or _configured_topic_table_path()
+    )
+    options = RecognitionRunOptions(**option_data)
     with STATE.lock:
         if STATE.running:
             return JSONResponse({"error": "识别验证流程正在运行"}, status_code=409)
@@ -324,11 +355,6 @@ def start_run(payload: StartRecognitionRequest, request: Request) -> dict[str, A
         STATE.pause_requested = False
         STATE.paused = False
         STATE.cancel_requested = False
-    option_data = payload.model_dump()
-    option_data["topic_table_path"] = (
-        payload.topic_table_path.strip() or _configured_topic_table_path()
-    )
-    options = RecognitionRunOptions(**option_data)
     threading.Thread(target=_run, args=(options,), daemon=True, name="recognition-workflow").start()
     return {"ok": True, "message": "识别—验证—决策流程已启动"}
 
@@ -376,6 +402,28 @@ def cancel_run(request: Request) -> dict[str, Any]:
         STATE.condition.notify_all()
     return {"ok": True, "message": "已请求结束；当前处理单元结束后生效"}
 
+
+def _formal_step_prompt(stage):
+    if stage=='cleaning':return legacy.load_prompt_config(legacy.PROMPT_CONFIG_PATH)['prompts']['cleaning_validation']
+    template=_prompt_snapshots()[stage].template
+    return {'system_prompt':template.system_prompt,'task_instruction':template.task_instruction}
+
+def _step_settings_response():
+    data=step_models.read_settings(legacy.PROJECT_ROOT)
+    return {'models':data['models'],'steps':data['steps'],'tested':{s:step_models.verified(legacy.PROJECT_ROOT,s,_formal_step_prompt(s)) for s in step_models.STAGES}}
+
+@router.get('/step-settings')
+def get_step_settings(request:Request):
+    require_admin(request)
+    return JSONResponse(_step_settings_response(),headers={"Cache-Control":"no-store"})
+
+@router.put('/step-settings')
+def put_step_settings(payload:StepSettingsRequest,request:Request):
+    require_admin(request)
+    if STATE.running:return JSONResponse({'error':'任务运行中，不能修改步骤模型配置'},status_code=409)
+    try:step_models.save_settings(legacy.PROJECT_ROOT,payload.model_dump(mode='json'))
+    except ValueError as exc:return JSONResponse({'error':str(exc)},status_code=400)
+    return JSONResponse(_step_settings_response(),headers={"Cache-Control":"no-store"})
 
 @router.get("/prompt-stages", summary="列出分步骤提示词")
 def prompt_stages(request: Request) -> dict[str, Any]:
@@ -463,6 +511,17 @@ def save_stage_prompt(stage: str, payload: PromptUpdateRequest, request: Request
 def test_stage_prompt(
     stage: str, payload: PromptSentenceTestRequest, request: Request
 ) -> dict[str, Any]:
+    formal=_formal_step_prompt(stage) if stage in step_models.STAGES else {}
+    before=step_models.read_settings(legacy.PROJECT_ROOT) if stage in step_models.STAGES else {}
+    expected=step_models.fingerprint(before,stage,formal) if before else None
+    result=_execute_stage_prompt(stage,payload,request)
+    if isinstance(result,dict) and stage in step_models.STAGES:
+        prompt_same=all(not getattr(payload,k).strip() or getattr(payload,k).strip()==formal[k].strip() for k in ['system_prompt','task_instruction'])
+        strategy_same=before['steps'][stage]['strategy']==payload.strategy.value and before['steps'][stage]['min_validators']==payload.min_validators
+        result['saved_configuration_verified']=bool(result.get('schema_valid') and prompt_same and strategy_same and step_models.mark_verified(legacy.PROJECT_ROOT,stage,[x.model_dump(mode='json') for x in payload.models],formal,expected))
+    return result
+
+def _execute_stage_prompt(stage,payload,request):
     require_admin(request)
     if stage not in {"cleaning", "topic", "term", "cross"}:
         return JSONResponse({"error": "未知提示词阶段"}, status_code=404)
@@ -508,7 +567,7 @@ def test_stage_prompt(
                 })
             return {
                 "ok": True, "stage": stage, "sentence": payload.sentence,
-                "mode": "external_models", "schema_valid": all(row.get("details") is not None for row in feedback),
+                "mode": "external_models", "schema_valid": bool(feedback) and all(isinstance(row.get("details"),dict) and row["details"].get("decision") in {"keep","correct","needs_human_review"} and isinstance(row["details"].get("changes",[]),list) for row in feedback),
                 "prompt": {"id": "legacy.cleaning_validation", "version": "1.1.0", "system_prompt": template["system_prompt"], "task_instruction": template["task_instruction"]},
                 "request_context": sample_payload, "model_feedback": feedback,
                 "result": feedback[0],
@@ -619,12 +678,8 @@ def test_stage_prompt(
             })
     decisions = [row.decision.value for row in results]
     counts = {value: decisions.count(value) for value in ("accept", "review", "reject", "uncertain")}
-    if not decisions:
-        aggregate = "uncertain"
-    elif payload.strategy != AggregationStrategy.UNANIMOUS:
-        aggregate = max(counts, key=counts.get)
-    else:
-        aggregate = decisions[0] if len(set(decisions)) == 1 else "review"
+    aggregated,agreement,conflict=ConfigurableValidationAggregator().aggregate(results,payload.strategy,min_validators=payload.min_validators,weights={row.id:row.weight for row in supplied_models})
+    aggregate=aggregated.value
     return {
         "ok": True,
         "stage": stage,

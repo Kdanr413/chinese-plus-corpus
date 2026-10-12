@@ -1222,6 +1222,13 @@ def raw_corpus_table(
 
 
 def validate_run_inputs(payload: dict[str, Any], config_path: Path) -> None:
+    if 'cleaning' in payload.get('steps',[]) and payload.get('model',{}).get('cleaning_enabled'):
+        from corpus_api import step_models
+        if step_models.settings_path(PROJECT_ROOT).exists():
+            selected=step_models.selected_models(step_models.read_settings(PROJECT_ROOT),'cleaning')
+            actual=payload.get('model',{})
+            if len(selected)!=1 or any(actual.get(k)!=selected[0].get(v) for k,v in [('name','model'),('base_url','base_url'),('api_key','api_key')]):raise ValueError('清洗模型与已保存的步骤选择不同')
+            step_models.require_verified(PROJECT_ROOT,'cleaning',load_prompt_config(PROMPT_CONFIG_PATH)['prompts']['cleaning_validation'])
     """Fail before launching subprocesses when selected stages have no corpus input."""
     steps = set(payload.get("steps") or [])
     domain_selected = bool(steps & {"topics", "terms"})
