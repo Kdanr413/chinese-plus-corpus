@@ -9,6 +9,16 @@ from pathlib import Path
 from typing import Any
 
 
+def chat_completions_url(base_url: str) -> str:
+    """Accept a service base URL or the complete chat endpoint."""
+    from urllib.parse import urlsplit, urlunsplit
+    parsed = urlsplit(base_url.strip())
+    path = parsed.path.rstrip('/')
+    if not path.endswith('/chat/completions'):
+        path += '/chat/completions'
+    return urlunsplit((parsed.scheme, parsed.netloc, path, parsed.query, parsed.fragment))
+
+
 DEFAULT_PROMPTS: dict[str, dict[str, Any]] = {
     "cleaning_validation": {
         "name": "清洗文本语言形式复核",

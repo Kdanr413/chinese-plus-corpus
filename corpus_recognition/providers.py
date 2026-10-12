@@ -11,6 +11,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Mapping, Protocol
 
 from pydantic import ValidationError
+from scripts.workflow.prompting import chat_completions_url
 
 from .config import ValidatorModelConfig
 from .errors import ValidatorResponseError, ValidatorUnavailableError
@@ -53,7 +54,7 @@ class OpenAICompatibleChatTransport:
             ensure_ascii=False,
         ).encode("utf-8")
         request = urllib.request.Request(
-            base_url.rstrip("/") + "/chat/completions",
+            chat_completions_url(base_url),
             data=body,
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             method="POST",

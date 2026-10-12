@@ -1172,7 +1172,17 @@ def write_clean_source_text(doc):
     source_type_dir = OUT_CLEAN_TEXT_DIR / safe_filename(doc["source_type"])
     source_dir = source_type_dir / safe_filename(doc["source"])
     source_dir.mkdir(parents=True, exist_ok=True)
-    filename = f"{doc['doc_id']}__{safe_filename(doc['title'])}.txt"
+    # Portal workspaces add several parent directories. Keep the generated
+    # filename within a conservative Windows path budget; the full title is
+    # retained in the text header and metadata, and doc_id keeps names unique.
+    title = safe_filename(doc['title'])
+    prefix = f"{doc['doc_id']}__"
+    def units(value):
+        return len(str(value).encode('utf-16-le')) // 2
+    budget = 240 - units(source_dir.resolve()) - 1 - units(prefix + '.txt')
+    while title and units(title) > max(0, budget):
+        title = title[:-1]
+    filename = f"{prefix}{title}.txt" if title else f"{doc['doc_id']}.txt"
     path = source_dir / filename
     header = [
         f"title: {doc['title']}",

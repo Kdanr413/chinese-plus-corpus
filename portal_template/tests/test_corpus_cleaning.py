@@ -1,5 +1,7 @@
 import importlib.util
 import unittest
+import tempfile
+from unittest.mock import patch
 from pathlib import Path
 
 
@@ -7,6 +9,36 @@ MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "prepare" / "cle
 SPEC = importlib.util.spec_from_file_location("corpus_cleaning", MODULE_PATH)
 corpus_cleaning = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(corpus_cleaning)
+
+
+class CleanOutputPathTests(unittest.TestCase):
+    def test_long_project_path_preserves_title_and_distinct_document_ids(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / ('project_' + 'x' * 75) / 'data/processed/corpus/clean_text_by_source'
+            title = '国家能源局_国家市场监督管理总局关于印发并网调度协议示范文本的通知' * 4
+            doc = dict(doc_id='doc_00284_3fe0f3e9_8309dff1', title=title,
+                       source_type='其他书籍_报告文本', source='book_other', domain='',
+                       text_genre='', genre_confidence=0, topics_auto=[], quality='完整可用',
+                       paragraph_count=1, section_count=1, sentence_count=1,
+                       original_path='data/raw/manual/original.txt', text='完整正文。')
+            with patch.object(corpus_cleaning, 'OUT_CLEAN_TEXT_DIR', output):
+                first = Path(corpus_cleaning.write_clean_source_text(doc))
+                second = Path(corpus_cleaning.write_clean_source_text({**doc, 'doc_id':'doc_00285_3fe0f3e9_8309dff1'}))
+            self.assertLessEqual(len(str(first.resolve()).encode('utf-16-le')) // 2, 240)
+            self.assertNotEqual(first, second)
+            content = first.read_text(encoding='utf-8')
+            self.assertIn(title, content)
+            self.assertIn(doc['original_path'], content)
+            self.assertIn(doc['text'], content)
+
+    def test_chat_endpoint_is_appended_exactly_once(self):
+        from scripts.workflow.prompting import chat_completions_url
+        for url in ['https://open.bigmodel.cn/api/paas/v4',
+                    'https://open.bigmodel.cn/api/paas/v4/',
+                    'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+                    'https://open.bigmodel.cn/api/paas/v4/chat/completions/']:
+            self.assertEqual(chat_completions_url(url), 'https://open.bigmodel.cn/api/paas/v4/chat/completions')
+        self.assertEqual(chat_completions_url('https://api.deepseek.com'), 'https://api.deepseek.com/chat/completions')
 
 
 class HeadingDetectionTests(unittest.TestCase):

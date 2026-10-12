@@ -16,7 +16,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in __import__("sys").path:
     __import__("sys").path.insert(0, str(PROJECT_ROOT))
 
-from scripts.workflow.prompting import build_messages, load_prompt_config, parse_json_content, prompt_key_for_task
+from scripts.workflow.prompting import build_messages, chat_completions_url, load_prompt_config, parse_json_content, prompt_key_for_task
 
 
 def main() -> int:
@@ -51,7 +51,7 @@ def main() -> int:
             prompt_key = prompt_key_for_task(task, args.mode)
             messages = build_messages(prompt_config["prompts"][prompt_key], task)
             body = json.dumps({"model": model, "temperature": 0.1, "messages": messages}, ensure_ascii=False).encode("utf-8")
-            request = urllib.request.Request(base_url.rstrip("/") + "/chat/completions", data=body, headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}, method="POST")
+            request = urllib.request.Request(chat_completions_url(base_url), data=body, headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}, method="POST")
             record = {"task_index": index, "mode": args.mode, "prompt_key": prompt_key, "prompt_updated_at": prompt_config.get("updated_at", ""), "model": model, "received_at": datetime.now().astimezone().isoformat(timespec="seconds")}
             attempt_errors = []
             for attempt in range(1, max(1, args.max_attempts) + 1):

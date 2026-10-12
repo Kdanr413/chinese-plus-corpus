@@ -42,7 +42,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from scripts.workflow.prompting import build_messages, load_prompt_config, parse_json_content, save_prompt_config, validate_prompt_config
+from scripts.workflow.prompting import build_messages, chat_completions_url, load_prompt_config, parse_json_content, save_prompt_config, validate_prompt_config
 from scripts.workflow.structure_reuse import (
     load_manifest as load_structure_reuse_manifest,
     resource_snapshot as structure_resource_snapshot,
@@ -172,7 +172,7 @@ def execute_prompt_test(payload: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("测试提示词必须填写模型名称和 API Key")
     messages = build_messages(config["prompts"][prompt_key], task)
     request_body = {"model": model_name, "temperature": 0.1, "messages": messages}
-    request = urllib.request.Request(base_url.rstrip("/") + "/chat/completions", data=json.dumps(request_body, ensure_ascii=False).encode("utf-8"), headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}, method="POST")
+    request = urllib.request.Request(chat_completions_url(base_url), data=json.dumps(request_body, ensure_ascii=False).encode("utf-8"), headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}, method="POST")
     started = time.perf_counter()
     with urllib.request.urlopen(request, timeout=180) as response:
         response_payload = json.loads(response.read().decode("utf-8"))
