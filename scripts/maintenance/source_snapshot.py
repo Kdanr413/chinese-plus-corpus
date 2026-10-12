@@ -4,7 +4,7 @@ import argparse,hashlib,json,re,shutil,subprocess,zipfile
 ROOT=Path(__file__).resolve().parents[2]
 MODULES=['corpus_api','corpus_delivery','corpus_pipeline','corpus_platform','corpus_portal','corpus_recognition','corpus_registry','corpus_releases','corpus_search','corpus_topic_workflow','scripts','vendor','configs','db','tests','docs','deploy','参考文件中心']
 EXCLUDED={'__pycache__','.cache','.pytest_cache','.git','runtime','填写示例'}
-EXTENSIONS={'.py','.md','.json','.csv','.txt','.html','.css','.js','.sql','.ps1','.cmd','.yml','.yaml','.svg','.j2','.toml',''}
+EXTENSIONS={'.py','.md','.json','.csv','.txt','.html','.css','.js','.cjs','.sql','.ps1','.cmd','.yml','.yaml','.svg','.j2','.toml',''}
 SECRET=re.compile(r'(?:gh[pousr]_[A-Za-z0-9]{25,}|github_pat_[A-Za-z0-9_]{25,}|\bsk-(?:proj-)?[A-Za-z0-9_-]{40,}\b)')
 MARKERS=[]
 for field in ['user.name','user.email']:
@@ -18,11 +18,11 @@ def put(path,text):
 def sanitize(text):
  # The user explicitly publishes this repository URL; preserve it while scrubbing personal Git metadata.
  repository_url='https://github.com/Kdanr413/chinese-plus-corpus'
- text=text.replace(repository_url,'__PUBLISHED_REPOSITORY_URL__')
+ text=text.replace(repository_url,'https://github.com/Kdanr413/chinese-plus-corpus')
  text=re.sub(r'[A-Za-z]:[\\/]+Users[\\/]+[^\\/\s"\']+','<USER_HOME>',text,flags=re.I)
  for marker in MARKERS:text=text.replace(marker,'[REDACTED]')
  if SECRET.search(text):raise ValueError('Potential credential in distribution source')
- return text.replace('__PUBLISHED_REPOSITORY_URL__',repository_url)
+ return text.replace('https://github.com/Kdanr413/chinese-plus-corpus',repository_url)
 def scrub(value):
  if isinstance(value,dict):return {k:('' if k.lower() in {'api_key','password','access_token','refresh_token','client_secret'} else scrub(v)) for k,v in value.items()}
  if isinstance(value,list):return [scrub(v) for v in value]

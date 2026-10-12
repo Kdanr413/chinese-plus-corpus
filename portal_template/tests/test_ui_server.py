@@ -190,6 +190,13 @@ class UiServerTests(unittest.TestCase):
         self.assertIn("多个候选", rows[0]["duplicate_label_explanation"])
         self.assertEqual(rows[2]["duplicate_label_count"], "1")
 
+    def test_cleaning_model_commands_are_independent_of_term_choice(self) -> None:
+        for cleaning in (False, True):
+            for external_terms in (False, True):
+                with self.subTest(cleaning=cleaning, terms=external_terms):
+                    commands, _ = build_commands({"steps": ["cleaning"], "resources": {}, "model": {"enabled": external_terms, "cleaning_enabled": cleaning, "name": "test-model", "base_url": "https://api.example.org/v1", "api_key": "dummy"}}, Path(__file__).resolve().parents[1] / "configs/pipeline.json")
+                    self.assertEqual(any("大模型清洗复核" in label for label, _ in commands), cleaning)
+
     def test_topic_taxonomy_upload_target_is_supported(self) -> None:
         from scripts.ui import server
         self.assertEqual(server.TEMPLATE_FILES["topic_taxonomy"], "参考话题体系.json")
