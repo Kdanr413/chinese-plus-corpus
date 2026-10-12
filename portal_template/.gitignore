@@ -29,12 +29,7 @@ Thumbs.db
 
 # Large source archives, vendored runtimes, and user-maintained inputs
 /base_file/
-/vendor/
-/inputs/*
-!/inputs/README.md
-!/inputs/*/
-/inputs/*/*
-!/inputs/*/README.md
+
 
 # Corpus data and generated outputs (keep only directory-level README files)
 /data/*
@@ -56,7 +51,9 @@ Thumbs.db
 
 /delivery_tools/
 
-/portal_template/
+
 
 # Per-project compiler caches (generated, never release assets)
 /.cache/
+/runtime/
+*.zip

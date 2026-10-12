@@ -1,51 +1,72 @@
-# 中文+语料库：可复用构建与共享流程
+# 中文+语料库：完整构建与共享流程
 
-本仓库提供当前完整源码；Windows 便携包见 [最新发行版](https://github.com/Kdanr413/chinese-plus-corpus/releases/latest)。仓库保持私有，接收者需要获得仓库访问授权。
+个人电脑和服务器使用同一套源码，统一从 GitHub 拉取。平台提供登录、独立用户项目、语料上传、六步构建、版本发布和只读分享。所有文件路径都相对于项目根目录；源码不包含原始语料、账号数据库、密钥、Python 运行环境或模型缓存。
 
-## 从源码运行
+## 拉取与安装
 
-推荐使用 Conda 创建 Python 3.11 环境：
+仓库保持私有，需要登录已获得仓库授权的 GitHub 账号。安装 Git、Conda 和 PostgreSQL，然后在你选择的目录执行：
 
 ```powershell
+git clone https://github.com/[REDACTED]/chinese-plus-corpus.git
+cd chinese-plus-corpus
 conda env create -f environment.yml
 conda activate corpus-platform
 Copy-Item .env.example .env
-# 配置自己的 PostgreSQL 数据库及 .env 中的 DB_* 参数
+```
+
+首次完整安装请按 [安装与迁移说明](docs/发行包安装说明.md) 创建自己的数据库并填写 `.env`。已有 `.env` 时不要覆盖。准备话题模型及程序表：
+
+```powershell
+python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-small-zh-v1.5')"
 python -m corpus_registry init-db
 python -m corpus_platform serve --setup
 ```
 
-首次运行根据提示创建管理员，然后访问 http://127.0.0.1:8000/。密码至少 3 位。话题模型需要首次联网下载，话题审核接口和真实句法服务需要自行配置。环境诊断：`python -m corpus_platform doctor`。源码启动请使用上述命令；下方双击启动方式适用于发行 ZIP，源码仓库不携带大型便携环境。
+首次在终端创建登录账号，密码至少 3 字符；打开 http://127.0.0.1:8000/。后续启动执行 `python -m corpus_platform serve`，Windows 也可在环境安装后双击 `启动语料库平台.cmd`。使用期间保持服务运行。
 
-账号登录后创建独立项目，上传语料并完成六步构建。不同项目保存在 `data/portal/projects/<项目编号>/`，包含各自上传原件、加工轮次、配置与正式版本；账号、会话和授权由 PostgreSQL 管理。第 6 步生成只读分享链接。公网使用见 [部署说明](deploy/portal/README.md)，使用和保存位置见 [主说明](PLATFORM_GUIDE.md) 与 [多用户说明](corpus_portal/README.md)。
+目前完整构建与 BCC 原生检索验收使用 Windows x64、Python 3.11。服务器优先使用同架构 Windows；Linux/Docker 文件保留供后续验证，尚不能承诺完整原生索引链路直接运行。安装模型依赖后，仍需配置实际可用的话题审核接口和真实句法服务；不得把测试合成语法当作正式成果。
 
-共享时优先使用正式版本的授权链接；独立检索服务器使用 `python -m corpus_delivery.search --releases data/releases --host 0.0.0.0 --port 8001`，需先导入完整的已建索引 Release。可复用打包工具见 [发行维护](scripts/maintenance/README.md)，完整流程与只读服务共用现有 BCC 引擎。
+## 个人电脑与服务器
 
----
+个人电脑：默认仅本机访问。要分享给其他电脑，配置对方能访问的主机地址或域名，并使服务保持在线。
 
-# 当前构建发行包（Windows x64）
+服务器：仍按上述方式 git clone 和安装，在 [服务器部署说明](deploy/portal/README.md) 中完成公网入口、HTTPS、数据库和常驻运行设置。用户登录后独立创建项目，在网页上传原文并完成构建。不要把项目文件夹配置为公开静态网站。
 
-本包整合账号登录、独立项目、六步构建、版本发布与只读分享，不含原作者语料、账号、密钥和历史成果。
+## 上传与构建
 
-## 首次运行
+登录 → 创建项目 → 上传 TXT 或只含 TXT 的 ZIP → 按六步构建 → 发布和建立索引。需要人工审核时，按工作台提示完成审核后继续。
 
-1. 安装并启动 PostgreSQL，创建自己的数据库和用户，复制 .env.example 为 .env，填写 DB_HOST、DB_PORT、DB_NAME、DB_USER、DB_PASSWORD。
-2. 双击 install-topics.cmd 安装 BERTopic 等依赖并下载模型，需要联网。本包附带核心 Python 与 BCC，未附完整话题环境及模型；首次安装可能较大。
-3. 双击 start-builder.cmd；首次解包运行环境后在窗口创建账号，密码至少 3 位。浏览器打开 http://127.0.0.1:8000/。使用期间不要关闭服务窗口。
-4. 登录并创建项目，上传语料、按六步流程构建，第 6 步完成索引发布后生成分享链接。
+人工参考话题体系使用 UTF-8 层级 JSON：
 
-主流程和文件位置见 PLATFORM_GUIDE.md 与 corpus_portal/README.md。话题审核需要使用者自行配置接口；真实句法步骤依赖 configs/pipeline.json 中的句法服务，部署者需确认可用。测试捷径或合成句法不能代替正式研究成果。
+- [最小上传模板](参考文件中心/模板/参考话题体系.json)
+- [完整填写示例](参考文件中心/模板/参考话题体系_填写示例.json)
+- [字段说明与上传位置](参考文件中心/话题体系格式说明.md)
 
-## 文件保存与维护
+其他上传模板见 [参考文件中心](参考文件中心/README.md)。网页资源区可取得对应模板。只在自己的项目中上传，不通过修改全局配置代替上传。
 
-项目位于 data/portal/projects/<项目编号>/；其中 data/raw/manual 保存上传原件，data/workspaces 保存加工及轮次，data/releases 保存正式版本和索引。账号和授权位于自己的 PostgreSQL。备份需包含项目、数据库和本机 .env，这些都不可公开打包。
+## 两种分享方式
 
-首次解包后，在本包根目录执行 runtime/python.exe -m corpus_platform portal add-user user02 新增账号，portal reset-password 重置密码。管理员检查：runtime/python.exe -m corpus_platform doctor。回归方法见 tests/README.md。
+**在线链接**：第 6 步选择已建立索引的正式版本，生成只读分享链接，发给他人直接检索。可设置期限或撤销；接收者不需要 GitHub、安装代码或构建账号。主机、门户、数据库和版本资产需持续可用。个人电脑与服务器都支持这一方式，个人电脑也必须提供可访问网络入口；localhost 链接无法供远程访问。
 
-移到新目录时推荐重新解包发行 ZIP，再迁移自己的数据、数据库和配置。环境重定位在首次运行时执行。
+**完整成果导出**：导出一个完整已发布的 Release，让另一台主机从同一 GitHub 拉取源码后运行独立只读检索服务。详见 [成果导出与独立检索](corpus_delivery/README.md)。独立检索不需要账号数据库；它没有门户分享链接的授权、过期和撤销功能。
 
-## 分享与部署
+## 保存位置与备份
 
-127.0.0.1 仅本机可用；其他电脑访问须按 deploy/portal/README.md 配置网络入口和 HTTPS，并设置 PORTAL_PUBLIC_URL。接收者通过有效分享链接只读检索，服务、数据库和指定索引持续可用时可继续使用。
+| 内容 | 相对路径 |
+| --- | --- |
+| 用户项目 | `data/portal/projects/<项目编号>/` |
+| 项目上传原件 | `data/portal/projects/<项目编号>/data/raw/manual/` |
+| 项目参考文件原件 | `data/portal/projects/<项目编号>/data/raw/reference_uploads/` |
+| 项目过程与轮次 | `data/portal/projects/<项目编号>/data/workspaces/` |
+| 项目正式版本及索引 | `data/portal/projects/<项目编号>/data/releases/` |
+| 新项目的干净程序模板 | `portal_template/` |
 
-独立只读服务用 start-search.cmd，但需先导入完整已建索引 Release 到 data/releases。导出方法见 corpus_delivery/README.md。第三方许可证见 THIRD_PARTY_NOTICES.md。GitHub 发行版提供当前三个独立下载包。
+账号、会话、项目归属与分享授权在 PostgreSQL；主机配置在 `.env`。不同用户项目独立存储。备份需同时包含项目、数据库和配置；源码 ZIP 不代替数据备份。原始语料与正式版本必须保护，日常更新不得删除 `data/raw/` 或任何用户项目中的原件。
+
+## 更新和维护
+
+停止构建任务后备份数据与配置，再在源码目录执行 `git pull --ff-only`，按变更说明更新依赖。不要用清理 Git 工作区的命令删除本机配置或数据。新项目使用新模板；已创建项目自带代码副本，更新主仓库不会自动升级这些项目，需管理员备份后安排单独升级。
+
+管理员新增或重置账号：`python -m corpus_platform portal add-user user02`、`python -m corpus_platform portal reset-password user02`。检查：`python -m corpus_platform doctor`；回归方法见 [测试说明](tests/README.md)。
+
+最终交付只有一份完整源码 ZIP及校验记录，与 GitHub 默认分支源码一致，不再分发三套程序或附带核心便携环境。发行维护见 [维护说明](scripts/maintenance/README.md)。第三方许可证见 [第三方声明](THIRD_PARTY_NOTICES.md)，完整多用户说明见 [多用户功能](corpus_portal/README.md)。

@@ -1,16 +1,24 @@
-# 交付与只读检索工具
+# 成果导出与独立只读检索
 
-复用原有 Corpus Release 校验、CorpusService 和 LangSC.BCC，不修改已有正文、索引或检索算法。
+个人电脑与服务器从同一 GitHub 获取源码。通常直接在构建平台第 6 步生成只读分享链接；接收者只需打开链接，主机及其数据库和版本资产持续在线。
 
-- `python -m corpus_delivery.export <Release目录> <目标releases目录>`：复制一个完整已发布版本，源与目标均校验，拒绝覆盖。
-- `python -m corpus_delivery.catalog <releases目录>`：校验并读取文件目录，不连接 PostgreSQL。
-- `python -m corpus_delivery.search --releases <releases目录> --host 127.0.0.1 --port 8001`：运行独立只读检索。
-- `python -m corpus_delivery.builder`：加载使用者自己的 .env，通过统一平台入口启动本地构建网页。
+需要让另一台主机自行承载检索时，在构建主机的源码目录执行（将 PROJECT_ID 与 VERSION 换成实际值）：
 
-只读服务仅注册查询所需接口，未注册构建、上传、任意文件下载或整库导出接口。公开入口由部署者配置；本地默认只监听回环地址。
+```powershell
+python -m corpus_delivery.export data/portal/projects/PROJECT_ID/data/releases/chinese-plus/VERSION exported-releases
+```
 
-本次三个交付包及详细使用说明见 GitHub 最新发行版。该目录已同步重建为当前干净构建包、空成果导出容器和最小只读服务，不含历史语料、账号或实际 .env，仍从 Git 跟踪范围排除。GitHub 已同步当前源码和新版发行包。
+导出完整 Release，包含 manifest.json、正文、原生索引和元数据，保持 GB18030 和特殊结构标记；拒绝覆盖。来源的语料库 ID 不是 chinese-plus 时使用实际 ID。导出目标可自行选择；不要带入账号、.env、原件或密钥。
 
-验证：`python -m unittest tests.test_corpus_delivery`。
+检索主机从 GitHub 拉取并按主 README 安装依赖，将完整 exported-releases 内容复制到该主机 data/releases 后：
 
-维护重建工具：scripts/maintenance/build_share_packages.py，使用新的输出目录，拒绝覆盖。详见 docs/项目清理与共享维护.md。
+```powershell
+python -m corpus_delivery.catalog data/releases
+python -m corpus_delivery.search --releases data/releases --host 127.0.0.1 --port 8001
+```
+
+打开 http://127.0.0.1:8001/search。独立只读检索不需要 PostgreSQL；原生 BCC 仍需当前平台兼容。给其他电脑访问须由管理员配置绑定地址、网络入口和 HTTPS。例如监听所有网卡用 --host 0.0.0.0，再通过实际 IP 或域名访问。
+
+此服务开放只读查询，没有上传或构建入口，也没有门户授权链接的登录、到期和撤销功能；能够访问服务入口的人可查询导入的成果。需要这些授权控制时用主平台分享。
+
+校验：python -m unittest tests.test_corpus_delivery。源码打包见 ../scripts/maintenance/README.md。

@@ -191,7 +191,28 @@ class UiServerTests(unittest.TestCase):
         self.assertEqual(rows[2]["duplicate_label_count"], "1")
 
     def test_topic_taxonomy_upload_target_is_supported(self) -> None:
-        self.assertTrue(callable(Handler.save_upload))
+        from scripts.ui import server
+        self.assertEqual(server.TEMPLATE_FILES["topic_taxonomy"], "参考话题体系.json")
+        templates = Path(__file__).resolve().parents[1] / "参考文件中心" / "模板"
+        for name in ["参考话题体系.json", "参考话题体系_填写示例.json"]:
+            with self.subTest(template=name), tempfile.TemporaryDirectory() as tmp:
+                target = Path(tmp) / "reference.json"
+                with patch.dict(server.UPLOAD_TARGETS, {"topic_taxonomy": target}):
+                    result = Handler.save_upload(None, "topic_taxonomy", name, (templates / name).read_bytes())
+                self.assertTrue(result["ok"])
+                self.assertTrue(target.is_file())
+                payload = json.loads(target.read_text(encoding="utf-8"))
+                self.assertTrue(payload["taxonomy_version"])
+                self.assertTrue(payload["classification_object"])
+
+    def test_topic_taxonomy_template_duplicate_id_is_rejected(self) -> None:
+        from scripts.ui import server
+        template = Path(__file__).resolve().parents[1] / "参考文件中心" / "模板" / "参考话题体系.json"
+        payload = json.loads(template.read_text(encoding="utf-8"))
+        payload["root"]["children"][0]["id"] = payload["root"]["id"]
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(server.UPLOAD_TARGETS, {"topic_taxonomy": Path(tmp) / "reference.json"}):
+            with self.assertRaisesRegex(ValueError, "重复节点"):
+                Handler.save_upload(None, "topic_taxonomy", "reference.json", json.dumps(payload).encode("utf-8"))
 
     def test_upload_path_removes_parent_traversal(self) -> None:
         self.assertEqual(safe_relative_path("../../教材/第一章.txt"), Path("教材/第一章.txt"))

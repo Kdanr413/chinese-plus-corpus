@@ -1,0 +1,104 @@
+{
+  "taxonomy_name": "农业参考话题体系（填写示例）",
+  "taxonomy_version": "1.0-example",
+  "classification_object": "农业生产中的作物与种植技术对象",
+  "root": {
+    "id": "AG",
+    "name": "农业",
+    "definition": "填写该话题的范围及与相邻话题的区别",
+    "representative_keywords": [
+      "农业"
+    ],
+    "children": [
+      {
+        "id": "AG_CROP",
+        "name": "作物",
+        "definition": "填写该话题的范围及与相邻话题的区别",
+        "representative_keywords": [
+          "作物"
+        ],
+        "children": [
+          {
+            "id": "AG_CROP_RICE",
+            "name": "水稻",
+            "definition": "填写该话题的范围及与相邻话题的区别",
+            "representative_keywords": [
+              "水稻"
+            ],
+            "children": []
+          },
+          {
+            "id": "AG_CROP_WHEAT",
+            "name": "小麦",
+            "definition": "填写该话题的范围及与相邻话题的区别",
+            "representative_keywords": [
+              "小麦"
+            ],
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "AG_TECH",
+        "name": "种植技术",
+        "definition": "填写该话题的范围及与相邻话题的区别",
+        "representative_keywords": [
+          "种植技术"
+        ],
+        "children": [
+          {
+            "id": "AG_TECH_IRRIGATION",
+            "name": "灌溉",
+            "definition": "填写该话题的范围及与相邻话题的区别",
+            "representative_keywords": [
+              "灌溉"
+            ],
+            "children": []
+          },
+          {
+            "id": "AG_TECH_FERTILIZATION",
+            "name": "施肥",
+            "definition": "填写该话题的范围及与相邻话题的区别",
+            "representative_keywords": [
+              "施肥"
+            ],
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  "boundary_candidates": [
+    {
+      "id": "BOUNDARY_PROCESSING",
+      "name": "农产品加工",
+      "definition": "填写该话题的范围及与相邻话题的区别",
+      "representative_keywords": [
+        "农产品加工"
+      ],
+      "children": []
+    }
+  ],
+  "cross_cutting_dimensions": [
+    {
+      "id": "DIM_SAFETY",
+      "name": "安全",
+      "definition": "填写该话题的范围及与相邻话题的区别",
+      "representative_keywords": [
+        "安全"
+      ],
+      "children": []
+    }
+  ],
+  "excluded_label_types": [
+    {
+      "id": "EXCLUDED_EMOTION",
+      "name": "情绪表达",
+      "definition": "填写该话题的范围及与相邻话题的区别",
+      "representative_keywords": [
+        "情绪表达"
+      ],
+      "children": []
+    }
+  ]
+}

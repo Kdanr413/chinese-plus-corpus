@@ -73,7 +73,7 @@ UPLOAD_TARGETS = {
 }
 TEMPLATE_ROOT = PROJECT_ROOT / "参考文件中心" / "模板"
 TEMPLATE_FILES = {
-    "topic_taxonomy": "领域话题表.csv", "domain_lexicon": "领域词表.csv",
+    "topic_taxonomy": "参考话题体系.json", "domain_lexicon": "领域词表.csv",
     "terminology": "规范术语表.csv", "segmentation_notes": "分词规则表.csv",
     "jieba_user_dict": "Jieba用户词典.txt", "stop_terms": "排除术语表.txt",
     "reference_documents": "典型领域文件登记.csv", "few_shot_examples": "术语抽取示例.jsonl",

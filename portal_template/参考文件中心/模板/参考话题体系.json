@@ -1,0 +1,37 @@
+{
+  "taxonomy_name": "我的参考话题体系",
+  "taxonomy_version": "1.0",
+  "classification_object": "填写语料主要谈论的领域对象",
+  "root": {
+    "id": "ROOT",
+    "name": "我的领域",
+    "definition": "填写该话题的范围及与相邻话题的区别",
+    "representative_keywords": [
+      "我的领域"
+    ],
+    "children": [
+      {
+        "id": "TOPIC_A",
+        "name": "一级话题示例",
+        "definition": "填写该话题的范围及与相邻话题的区别",
+        "representative_keywords": [
+          "一级话题示例"
+        ],
+        "children": [
+          {
+            "id": "TOPIC_A_1",
+            "name": "二级话题示例",
+            "definition": "填写该话题的范围及与相邻话题的区别",
+            "representative_keywords": [
+              "二级话题示例"
+            ],
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  "boundary_candidates": [],
+  "cross_cutting_dimensions": [],
+  "excluded_label_types": []
+}

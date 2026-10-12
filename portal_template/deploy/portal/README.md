@@ -2,27 +2,24 @@
 
 目标：用户登录后独立构建，完成后发出只读检索链接。不能把整个项目目录设为公开静态网站；网页由门户服务输出，数据目录只供服务端读取。
 
-## 上传文件
+## 从 GitHub 获取完整源码
 
-服务器私有项目目录至少包含：
+个人主机和服务器统一从已授权的私有仓库拉取：
 
-- 当前所有 `corpus_*` 代码目录，包括新增的 `corpus_portal` 和 `corpus_delivery`；
-- `scripts/`、`configs/`、`db/`、`vendor/`、`base_file/` 及程序所需参考资源；
-- 已去除私人内容的 `portal_template/`，作为新用户项目模板；
-- `requirements.txt`、`environment.yml`、`.env.example`、`THIRD_PARTY_NOTICES.md`；
-- `deploy/portal/` 和操作文档；保留 `tests/` 可用于迁移验证。
+```powershell
+git clone https://github.com/[REDACTED]/chinese-plus-corpus.git
+cd chinese-plus-corpus
+```
 
-要保留当前全部研究成果，再完整上传 `data/`、`inputs/`、`reports/`、`参考文件中心/`。这些可能包含原文、模型配置及个人信息，放在服务器私有磁盘目录，不上传公开 GitHub，不直接映射为网页下载目录。`data/` 应包含原始文件、加工结果、工作区和所有正式 Release；新门户的用户项目也存于其内。
+完整源码已包含程序、配置接口、干净 portal_template、上传 JSON 模板、测试及部署文件。无需上传开发机目录，不依赖 base_file 或旧三部分便携包。首次数据库准备见 [安装说明](../../docs/发行包安装说明.md)。不要复制或提交他人的 .env、data、模型缓存或账号备份。
 
-不要复制开发机 `.env` 到公开发行目录；服务器从 `.env.example` 创建自己的 `.env`，填写服务器数据库信息。`.git/`、`.cache/`、`.pytest_cache/`、`__pycache__/`、旧 `logs/`、重复的 `deliveries/`、`delivery_tools/` 不属于必需部署内容。旧日志需要保留时放私有归档。
-
-数据库不在这些文件里。迁移已有元数据还需要单独备份 PostgreSQL。停下写入任务后，用 PostgreSQL 自带 `pg_dump -Fc` 导出原数据库，在目标数据库用 `pg_restore --no-owner` 恢复；不要把备份提交 Git。恢复时选择空的目标数据库，禁止直接覆盖含研究成果的旧库。若只迁移文件并初始化新数据库，文件成果仍存在，但旧识别任务、账户、项目和分享记录不会自动恢复。
+如迁移自己的已有成果，停下写入任务后单独迁移用户项目目录，并用 pg_dump -Fc / pg_restore 恢复 PostgreSQL 到空目标库。源码不包含数据，单独复制原文不能恢复项目归属和分享授权。原始语料不得在迁移和更新中清除。
 
 ## 安装环境
 
 当前完整隔离验证使用 Windows、Python 3.11 和原生 PostgreSQL。若要尽快复用现有 BCC 环境，可以先使用同架构 Windows 服务器。Linux 需要另行验证 LangSC/BCC 本地库与完整构建；当前不提供已经验证的 Linux Docker 全流程镜像。
 
-在服务器安装 Conda 和 PostgreSQL，建立数据库与专用数据库账号。复制项目到任意私有目录后进入该目录：
+在服务器安装 Conda 和 PostgreSQL，建立数据库与专用数据库账号。完成上述克隆后，在源码根目录执行：
 
 ```powershell
 conda env create -f environment.yml

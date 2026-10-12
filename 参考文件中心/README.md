@@ -4,7 +4,7 @@
 
 | 上传内容 | 推荐模板 | 上传后当前生效位置 |
 | --- | --- | --- |
-| 参考话题体系 | `../configs/topics/new_energy_candidate_taxonomy.json` | `configs/topics/new_energy_candidate_taxonomy.json` |
+| 参考话题体系 | [JSON 模板](模板/参考话题体系.json)，[字段说明](话题体系格式说明.md) | `configs/topics/new_energy_candidate_taxonomy.json` |
 | 领域词表 | `模板/领域词表.csv`，也支持一行一词 TXT | `inputs/linguistic/domain_lexicon.csv` |
 | 已有术语 | `模板/规范术语表.csv`，也支持一行一词 TXT | `inputs/linguistic/terminology.csv` |
 | 分词规则 | `模板/分词规则表.csv` | `inputs/linguistic/segmentation_notes.csv` |

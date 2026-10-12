@@ -1,11 +1,13 @@
-# 共享发行包维护
+# 完整源码发行维护
 
-在主项目目录执行：
+个人和服务器统一使用 GitHub 源码。最终源码包不附带 Python 便携环境或实际语料。
+
+在项目根目录执行：
 
 ```powershell
-python scripts/maintenance/build_share_packages.py --output deliveries/NEW_RELEASE --runtime deliveries/2026-10-09/01-builder/runtime-win64.zip
+python scripts/maintenance/build_source_release.py --output deliveries/NEW_RELEASE
 ```
 
-NEW_RELEASE 必须是不存在的目录。工具复制当前源码、清空输入接口中的私人内容、生成空动态话题体系和干净模板，重建三个独立 README、ZIP、隐私检查和 SHA256 校验值。核心运行环境沿用现有 Windows 包，不下载依赖或模型。
+输出必须是不存在的新目录。生成 corpus-source/ 完整干净源码、corpus-source.zip、SHA256SUMS.txt 和脱敏校验记录。代码、当前文档、输入格式、必要资源、测试和干净新项目模板均包含；真实 data、.env、账号数据库、密钥、缓存、运行环境、Git 历史不包含。输入词表复制为空接口，正式动态体系复制为空树。
 
-结果验证后再替换共享目录，禁止把正在使用的 data/portal、.env、个人 Git 历史或真实成果混入源码包。工具不会删除原目录，也不会推送 GitHub。02-corpus-data 默认空，需要分享成果时先导出完整正式版本，再独立打包。
+脚本只读当前源文件，写入新发行目录，不删除原目录、不改 data/raw，也不自动推送 GitHub。验证后将 corpus-source/ 同步仓库，再将 ZIP 和校验文件作为对应提交的 Release 资产上传。旧发行目录清理应单独核对路径，用户原始文件和正式版本不得列为清理目标。
