@@ -1,0 +1,33 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const path=require('node:path');
+const html=fs.readFileSync(path.join(__dirname,'../corpus_api/web/index.html'),'utf8');
+for(const m of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(m[1]);
+const api=html.slice(html.indexOf('async function api('),html.indexOf('function fail('));
+const wait=html.split(/\r?\n/).find(x=>x.startsWith('async function waitLegacy('));
+async function check(){
+ let notices=0;
+ const ctx={showLoginExpired:()=>{notices++},logOperation:()=>{},operationLabel:()=>'',stage:()=>{},overall:()=>{}};
+ vm.createContext(ctx);vm.runInContext(api,ctx);
+ ctx.fetch=async()=>({status:401,ok:false,json:async()=>({detail:'请先登录'})});
+ await assert.rejects(vm.runInContext("api('/api/status')",ctx),error=>error.authRequired&&error.message.includes('后台任务仍会继续'));
+ assert.equal(notices,1);
+ ctx.fetch=async()=>({status:400,ok:false,json:async()=>({detail:'具体错误'})});
+ await assert.rejects(vm.runInContext("api('/api/status')",ctx),error=>error.message==='具体错误');
+ vm.runInContext(wait,ctx);
+ ctx.fetch=async()=>({status:200,ok:true,json:async()=>({})});
+ await assert.rejects(vm.runInContext("waitLegacy('clean',3,20)",ctx),error=>error.message.includes('任务状态返回不完整')&&!error.message.includes('undefined'));
+ ctx.fetch=async()=>({status:200,ok:true,json:async()=>({job:{running:false,progress:100}})});
+ await vm.runInContext("waitLegacy('clean',3,20)",ctx);
+ const stages=[];
+ ctx.stage=(...args)=>stages.push(args);
+ ctx.api=async()=>({job:{running:true,current_step:'大模型清洗复核（可选）',progress:50}});
+ ctx.localStorage={getItem:()=>null};ctx.ACTIVE_RUN_KEY='run';ctx.activeRun='';
+ ctx.$=()=>({});ctx.waitLegacy=()=>new Promise(()=>{});
+ vm.runInContext(html.split(/\r?\n/).find(x=>x.startsWith('async function restoreLegacyJob(')),ctx);
+ assert.equal(await vm.runInContext('restoreLegacyJob()',ctx),true);
+ assert.equal(stages.length,1);assert.equal(stages[0][0],'clean');
+ console.log('PASS: expired sessions, detailed errors, missing job status and successful polling');
+}
+check().catch(error=>{console.error(error);process.exit(1)});
