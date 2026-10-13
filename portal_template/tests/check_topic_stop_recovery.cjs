@@ -1,0 +1,7 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const html=fs.readFileSync(require('node:path').join(__dirname,'../corpus_api/web/topic-workflow.html'),'utf8');
+for(const m of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(m[1]);
+const start=html.indexOf('async function stopRecoveryJob(){'),end=html.indexOf("$('recoveryStopJob').onclick",start);
+const fields={recoveryJobId:{value:'bad'},recoveryStopJob:{disabled:false},recoveryStopStatus:{textContent:''}};let calls=[];
+const context={$:id=>fields[id],api:async(path,opt)=>{calls.push({path,opt});return{message:'saved stop request'}}};vm.createContext(context);vm.runInContext(html.slice(start,end),context);
+(async()=>{await context.stopRecoveryJob();assert.equal(calls.length,0);fields.recoveryJobId.value='a'.repeat(32);await context.stopRecoveryJob();assert.equal(calls[0].path,'/api/workflow/jobs/'+fields.recoveryJobId.value+'/cancel');assert.equal(calls[0].opt.method,'POST');assert.equal(fields.recoveryStopJob.disabled,false);assert.equal(fields.recoveryStopStatus.textContent,'saved stop request');context.api=async()=>{throw new Error('offline')};await context.stopRecoveryJob();assert.match(fields.recoveryStopStatus.textContent,/offline/);assert.equal(fields.recoveryStopJob.disabled,false);console.log('PASS: recovery stop works without loaded workflow state; invalid ID blocked; failure visible and button restored')})().catch(e=>{console.error(e);process.exit(1)});
