@@ -8,7 +8,7 @@ const api=html.slice(html.indexOf('async function api('),html.indexOf('function 
 const wait=html.split(/\r?\n/).find(x=>x.startsWith('async function waitLegacy('));
 async function check(){
  let notices=0;
- const ctx={showLoginExpired:()=>{notices++},logOperation:()=>{},operationLabel:()=>'',stage:()=>{},overall:()=>{}};
+ const ctx={showLoginExpired:()=>{notices++},readLegacyPause:async data=>data,logOperation:()=>{},operationLabel:()=>'',stage:()=>{},overall:()=>{}};
  vm.createContext(ctx);vm.runInContext(api,ctx);
  ctx.fetch=async()=>({status:401,ok:false,json:async()=>({detail:'请先登录'})});
  await assert.rejects(vm.runInContext("api('/api/status')",ctx),error=>error.authRequired&&error.message.includes('后台任务仍会继续'));
@@ -28,6 +28,12 @@ async function check(){
  vm.runInContext(html.split(/\r?\n/).find(x=>x.startsWith('async function restoreLegacyJob(')),ctx);
  assert.equal(await vm.runInContext('restoreLegacyJob()',ctx),true);
  assert.equal(stages.length,1);assert.equal(stages[0][0],'clean');
+ vm.runInContext(html.split(/\r?\n/).find(x=>x.startsWith('async function readLegacyPause(')),ctx);
+ ctx.fetch=async()=>({ok:true,json:async()=>({text:JSON.stringify({status:'suspended',paused_at:'2026-10-13T13:00:00+08:00',successful_records:3266,total_tasks:76139})})});
+ const paused=await ctx.readLegacyPause({job:{running:true,current_step:'大模型清洗复核',started_at:'2026-10-12T23:00:00+08:00'}},'/api/status');
+ assert.equal(paused.job.paused,true);assert.ok(paused.job.current_step.includes('3266'));
+ const fresh=await ctx.readLegacyPause({job:{running:true,current_step:'大模型清洗复核',started_at:'2026-10-14T00:00:00+08:00'}},'/api/status');
+ assert.equal(fresh.job.paused,undefined);
  console.log('PASS: expired sessions, detailed errors, missing job status and successful polling');
 }
 check().catch(error=>{console.error(error);process.exit(1)});
