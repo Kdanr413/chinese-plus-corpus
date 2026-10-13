@@ -99,6 +99,15 @@ class PortalTests(unittest.TestCase):
         (ws.path/'corpus/text.txt').write_text('Doc example\n#Global 领域=测试\n#Group\nItem: 电池。\n',encoding='gb18030')
         if indexed:(ws.path/'index/Org.dat').write_bytes(b'fixture')
         return create_release(ws.path,root/'data/releases',corpus_id='chinese-plus',version=version,corpus_format_version='1',pipeline_version='1',search_engine_version='LangSC.BCC 2.0.7')
+    def test_login_cookie_has_no_deadline_and_logout_revokes_session(self):
+        response=self.alice.post('/_portal/api/login',json={'username':'alice','password':'a sufficiently long password'})
+        cookie=response.headers['set-cookie'].lower()
+        self.assertNotIn('max-age=',cookie)
+        self.assertNotIn('expires=',cookie)
+        self.assertIn('httponly',cookie)
+        self.assertEqual(self.alice.get('/_portal/api/me').status_code,200)
+        self.assertEqual(self.alice.post('/_portal/api/logout',json={},headers={'x-csrf-token':response.json()['csrf_token']}).status_code,200)
+        self.assertEqual(self.alice.get('/_portal/api/me').status_code,401)
     def share(self):
         r=self.alice.post(f'/_portal/api/projects/{self.pid}/shares',json={'version':'1.0'},headers=self.a)
         self.assertEqual(r.status_code,201,r.text);return r.json()

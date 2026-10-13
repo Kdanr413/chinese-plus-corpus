@@ -62,7 +62,7 @@ class PortalStore:
                 return None
             c.execute('UPDATE corpus_portal.login_attempts SET failures=0 WHERE key_hash=%s',(keys[0],))
             token,csrf=secrets.token_urlsafe(32),secrets.token_urlsafe(32)
-            c.execute('INSERT INTO corpus_portal.sessions(token_hash,user_id,csrf_token,expires_at) VALUES (%s,%s,%s,%s)',(digest(token),row['id'],csrf,now+timedelta(hours=12)))
+            c.execute("INSERT INTO corpus_portal.sessions(token_hash,user_id,csrf_token,expires_at) VALUES (%s,%s,%s,'infinity'::timestamptz)",(digest(token),row['id'],csrf))
             return token,csrf
     def session(self, token):
         with connect(self.settings) as c:

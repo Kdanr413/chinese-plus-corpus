@@ -77,7 +77,7 @@ def create_app(settings=None,store=None,supervisor=None,share_loader=None):
         if result is None: raise HTTPException(401,'账号或密码错误，或尝试次数过多，请稍后重试')
         token,csrf=result
         response=JSONResponse({'csrf_token':csrf})
-        response.set_cookie(COOKIE,token,httponly=True,secure=settings.secure_cookie,samesite='lax',max_age=12*3600,path='/')
+        response.set_cookie(COOKIE,token,httponly=True,secure=settings.secure_cookie,samesite='lax',path='/')
         response.headers['Cache-Control']='no-store'
         return response
     @app.get('/_portal/api/me')
