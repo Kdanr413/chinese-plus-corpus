@@ -1085,17 +1085,33 @@ class WorkflowManager:
         return job
 
     def start_clustering(self, round_id: str, python_executable: str = "") -> dict[str, Any]:
-        round_state = self.read_round(round_id)
-        executable = self._python_executable(python_executable, round_state)
-        job = self._new_job("clustering", round_id, {"python_executable": executable})
-        threading.Thread(
-            target=self._run_clustering, args=(job["job_id"], executable), daemon=True
-        ).start()
-        round_state["status"] = "clustering"
-        round_state["stage"] = 1
-        round_state["clustering_python_executable"] = executable
-        self.write_round(round_state)
-        return job
+        # Reserve the job and round before starting the thread. All tabs and
+        # concurrent requests in this project's worker share this lock.
+        with self.lock:
+            round_state = self.read_round(round_id)
+            active = [job for job in self.jobs.values() if job.get("kind") == "clustering" and job.get("status") in {"queued", "running", "paused"}]
+            for job in active:
+                if job.get("round_id") == round_id:
+                    return copy.deepcopy(job)
+            if active:
+                raise ValueError("已有聚类任务正在运行，请等待完成，不能重复启动其他轮次")
+            completed = [job for job in self.jobs.values() if job.get("kind") == "clustering" and job.get("round_id") == round_id and job.get("status") == "completed"]
+            if completed and round_state.get("cluster_count", 0):
+                return copy.deepcopy(completed[-1])
+            if round_state.get("published") or round_state.get("cluster_count", 0):
+                raise ValueError("本轮聚类已完成，请使用已有结果；重新聚类请创建新轮次")
+            executable = self._python_executable(python_executable, round_state)
+            job = self._new_job("clustering", round_id, {"python_executable": executable})
+            round_state.update(status="clustering", stage=1, clustering_python_executable=executable)
+            self.write_round(round_state)
+            try:
+                threading.Thread(target=self._run_clustering, args=(job["job_id"], executable), daemon=True).start()
+            except Exception:
+                self._update_job(job["job_id"], status="failed", finished_at=now_iso(), message="聚类线程启动失败")
+                round_state["status"] = "clustering_failed"
+                self.write_round(round_state)
+                raise
+            return copy.deepcopy(job)
 
     def _run_clustering(self, job_id: str, executable: str) -> None:
         job = self.jobs[job_id]

@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import shutil
 import unittest
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch, MagicMock
@@ -17,6 +19,25 @@ from corpus_topic_workflow import WorkflowManager
 
 
 class TopicWorkflowIntegrationTests(unittest.TestCase):
+    def test_parallel_cluster_submissions_reserve_one_job(self):
+        manager=object.__new__(WorkflowManager)
+        manager.lock=threading.RLock();manager.jobs={}
+        manager.read_round=lambda rid:{'round_id':rid,'sample_path':'sample.jsonl'}
+        manager.write_round=MagicMock();manager._persist_jobs=MagicMock()
+        manager._python_executable=lambda *args:'python'
+        started=threading.Event()
+        manager._run_clustering=MagicMock(side_effect=lambda *args:started.set())
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            jobs=list(executor.map(lambda _:manager.start_clustering('R0001'),range(16)))
+        self.assertTrue(started.wait(2))
+        self.assertEqual(len({job['job_id'] for job in jobs}),1)
+        self.assertEqual(manager._run_clustering.call_count,1)
+        with self.assertRaisesRegex(ValueError,'已有聚类任务'):
+            manager.start_clustering('R0002')
+        job=next(iter(manager.jobs.values()));job['status']='completed'
+        manager.read_round=lambda rid:{'round_id':rid,'cluster_count':979}
+        self.assertEqual(manager.start_clustering('R0001')['job_id'],job['job_id'])
+        self.assertEqual(manager._run_clustering.call_count,1)
     def test_clustering_uses_the_existing_round_sample_without_resampling(self) -> None:
         with TemporaryDirectory() as directory:
             manager = MagicMock()
