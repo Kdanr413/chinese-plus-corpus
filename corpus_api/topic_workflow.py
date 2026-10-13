@@ -21,6 +21,7 @@ from fastapi.responses import Response
 
 from corpus_registry.config import corpus_data_root
 from corpus_topic_workflow import WorkflowManager
+from corpus_topic_workflow.llm_annotation_api import ModelAPITimeoutError
 from corpus_topic_workflow.run_topic_demo import build_units, load_bertopic_config
 from corpus_topic_workflow.topic_taxonomy_store import taxonomy_changes_path
 
@@ -123,6 +124,10 @@ def workflow_manager() -> WorkflowManager:
 def _call(operation: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
     try:
         return operation(*args, **kwargs)
+    except ModelAPITimeoutError as exc:
+        raise HTTPException(status_code=504, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except FileNotFoundError as exc:

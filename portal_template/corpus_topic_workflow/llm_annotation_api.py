@@ -8,6 +8,9 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse, urlsplit, urlunsplit
 
+class ModelAPITimeoutError(RuntimeError):
+    """The upstream model did not reply within the configured time."""
+
 
 DEFAULT_SYSTEM_PROMPT = """你是中文语料话题体系审核员。你的任务是判断文本所属话题，并维护统一、稳定的层级名称。
 必须遵守：
@@ -401,12 +404,19 @@ def _request_json(config: dict, api_key: str, url: str, body: dict) -> dict:
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as error:
         detail = error.read().decode("utf-8", errors="replace")[:2000]
+        if api_key:detail=detail.replace(api_key,'[REDACTED]')
         raised = RuntimeError(f"模型 API 返回 HTTP {error.code}：{detail}")
         raised.api_detail = detail  # type: ignore[attr-defined]
         raised.api_status = error.code  # type: ignore[attr-defined]
         raise raised from error
+    except TimeoutError as error:
+        raise ModelAPITimeoutError(f"模型接口读取超时（{int(config['timeout_seconds'])} 秒），尚未取得完整结果。请检查接口响应速度，或调整超时后重新测试。") from error
     except urllib.error.URLError as error:
+        if isinstance(error.reason,TimeoutError):
+            raise ModelAPITimeoutError(f"模型接口连接超时（{int(config['timeout_seconds'])} 秒），请检查网络和服务地址后重试。") from error
         raise RuntimeError(f"无法连接模型 API：{error.reason}") from error
+    except (ConnectionError,OSError) as error:
+        raise RuntimeError('模型接口连接中断，请检查网络和接口服务后重试') from error
 
 
 def parse_model_json(text: str) -> dict:
