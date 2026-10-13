@@ -92,7 +92,7 @@ class SentenceTermIntersectionProvider:
     ) -> None:
         self.settings = settings
         self.prompt = prompt
-        self.transport = transport or OpenAICompatibleChatTransport()
+        self.transport = transport or OpenAICompatibleChatTransport(model_version=settings.model_version)
         self.timeout_seconds = timeout_seconds
         self.name = settings.validator_id
         self.model = settings.model

@@ -12,6 +12,8 @@ from typing import Any, Mapping, Protocol
 
 from pydantic import ValidationError
 from scripts.workflow.prompting import chat_completions_url
+from scripts.workflow.model_cache import AnnotationCache
+from pathlib import Path
 
 from .config import ValidatorModelConfig
 from .errors import ValidatorResponseError, ValidatorUnavailableError
@@ -40,6 +42,11 @@ class ChatTransport(Protocol):
 class OpenAICompatibleChatTransport:
     """Small HTTP adapter; provider business rules do not depend on this class."""
 
+    def __init__(self, model_version=''):
+        root=os.environ.get('CORPUS_PROJECT_ROOT')
+        self.cache=AnnotationCache(Path(root)/'data/model_annotations') if root else None
+        self.model_version=model_version
+
     def complete(
         self,
         *,
@@ -49,6 +56,9 @@ class OpenAICompatibleChatTransport:
         messages: list[dict[str, str]],
         timeout_seconds: float,
     ) -> str:
+        key,bindings=self.cache.identify(base_url,model,messages,self.model_version) if self.cache else ('',{})
+        cached=self.cache.get(key,bindings) if self.cache else None
+        if cached is not None:return cached
         body = json.dumps(
             {"model": model, "temperature": 0.1, "messages": messages},
             ensure_ascii=False,
@@ -65,6 +75,7 @@ class OpenAICompatibleChatTransport:
             content = payload.get("choices", [{}])[0].get("message", {}).get("content")
             if content is None or not str(content).strip():
                 raise ValidatorResponseError("model response has empty message.content")
+            if self.cache:self.cache.put(key,bindings,str(content))
             return str(content)
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")
@@ -157,7 +168,7 @@ class OpenAICompatibleValidatorProvider:
     ) -> None:
         self.settings = settings
         self.prompt = prompt
-        self.transport = transport or OpenAICompatibleChatTransport()
+        self.transport = transport or OpenAICompatibleChatTransport(model_version=settings.model_version)
         self.timeout_seconds = timeout_seconds
         self.name = settings.validator_id
         self.model = settings.model
@@ -291,7 +302,7 @@ class OpenAICompatibleTopicLabelProvider:
     ) -> None:
         self.settings = settings
         self.prompt = prompt
-        self.transport = transport or OpenAICompatibleChatTransport()
+        self.transport = transport or OpenAICompatibleChatTransport(model_version=settings.model_version)
         self.timeout_seconds = timeout_seconds
         self.name = settings.validator_id
         self.model = settings.model

@@ -76,6 +76,12 @@ def safe_cleaning_correction(
 
 
 def prepare(args: argparse.Namespace) -> int:
+    # Preserve the task-to-response mapping before creating a new round.
+    if args.tasks.exists() and args.responses.exists():
+        archive=PROJECT_ROOT/'data/model_annotations/runs'/datetime.now().strftime('%Y%m%d-%H%M%S-%f')
+        archive.mkdir(parents=True,exist_ok=False)
+        shutil.copy2(args.tasks,archive/'cleaning-tasks.jsonl')
+        shutil.copy2(args.responses,archive/'cleaning-responses.jsonl')
     paragraphs = read_jsonl(args.corpus_root / "paragraphs.jsonl")
     tasks: list[dict[str, Any]] = []
     for index, row in enumerate(paragraphs):
