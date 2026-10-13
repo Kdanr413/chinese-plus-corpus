@@ -158,7 +158,7 @@ def prepare_prompt_update(prompt_key: str, template: Any) -> dict[str, Any]:
     return validate_prompt_config(current)
 
 
-def execute_prompt_test(payload: dict[str, Any]) -> dict[str, Any]:
+def _execute_prompt_test_once(payload: dict[str, Any]) -> dict[str, Any]:
     prompt_key = str(payload.get("prompt_key", ""))
     config = prepare_prompt_update(prompt_key, payload.get("template"))
     task = payload.get("sample_payload")
@@ -194,6 +194,18 @@ def execute_prompt_test(payload: dict[str, Any]) -> dict[str, Any]:
     output.write_text(json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     record["report_path"] = str(output.relative_to(PROJECT_ROOT)).replace("\\", "/")
     return record
+
+
+def execute_prompt_test(payload):
+    try:return _execute_prompt_test_once(payload)
+    except Exception as error:
+        model=payload.get('model') or {}
+        if model.get('name') and model.get('api_key'):
+            from scripts.workflow.model_errors import ModelErrors
+            template=payload.get('template') or {}
+            messages=build_messages(template,payload.get('sample_payload') or {}) if all(k in template for k in ('system_prompt','task_instruction','output_schema')) else []
+            ModelErrors(PROJECT_ROOT).record('prompt_test',chat_completions_url(model.get('base_url') or 'https://api.openai.com/v1'),{'model':model['name'],'temperature':0.1,'messages':messages},error,model['api_key'])
+        raise
 
 
 def read_csv_rows(path: Path) -> tuple[list[str], list[dict[str, str]]]:
@@ -972,7 +984,7 @@ def build_commands(payload: dict[str, Any], config_path: Path) -> tuple[list[tup
             clean_root = PROJECT_ROOT / "data" / "processed" / "corpus" / "jsonl"
             clean_llm = PROJECT_ROOT / "data" / "processed" / "cleaning_llm"
             commands.append(("生成大模型清洗复核任务（可选）", [python, str(PROJECT_ROOT / "scripts" / "prepare" / "llm_clean_review.py"), "prepare", "--corpus-root", str(clean_root), "--tasks", str(clean_llm / "tasks.jsonl"), "--output-root", str(clean_llm)]))
-            commands.append(("大模型清洗复核（可选）", [python, str(PROJECT_ROOT / "scripts" / "workflow" / "run_validation_llm.py"), "--mode", "cleaning", "--tasks", str(clean_llm / "tasks.jsonl"), "--responses", str(clean_llm / "responses.jsonl"), "--limit", "0", "--reset", "--require-complete"]));
+            commands.append(("大模型清洗复核（可选）", [python, str(PROJECT_ROOT / "scripts" / "workflow" / "run_validation_llm.py"), "--mode", "cleaning", "--tasks", str(clean_llm / "tasks.jsonl"), "--responses", str(clean_llm / "responses.jsonl"), "--limit", "0", "--reset", "--require-complete", "--continue-on-errors"]));
             commands.append(("安全应用大模型清洗建议", [python, str(PROJECT_ROOT / "scripts" / "prepare" / "llm_clean_review.py"), "apply", "--corpus-root", str(clean_root), "--responses", str(clean_llm / "responses.jsonl"), "--output-root", str(clean_llm)]))
     topic_selected = "topics" in steps
     term_selected = "terms" in steps
@@ -989,12 +1001,12 @@ def build_commands(payload: dict[str, Any], config_path: Path) -> tuple[list[tup
             commands.append(("检查话题加工结果是否可复用", ["__TOPIC_REUSE_CHECK__"]))
         command = base + ["topic-only", "--defer-topic-llm"] + config_args
         commands.append(("话题体系识别（BERTopic）与审核任务生成", command))
-        commands.append(("BERTopic 聚类结果与参考体系固定匹配（必选）", [python, str(PROJECT_ROOT / "scripts" / "workflow" / "run_validation_llm.py"), "--mode", "topics", "--tasks", str(PROJECT_ROOT / "data" / "processed" / "topics" / "topic_mapping_llm_tasks.jsonl"), "--responses", str(PROJECT_ROOT / "data" / "processed" / "topics" / "topic_mapping_llm_responses.jsonl"), "--limit", "25000", "--require-complete"]))
+        commands.append(("BERTopic 聚类结果与参考体系固定匹配（必选）", [python, str(PROJECT_ROOT / "scripts" / "workflow" / "run_validation_llm.py"), "--mode", "topics", "--tasks", str(PROJECT_ROOT / "data" / "processed" / "topics" / "topic_mapping_llm_tasks.jsonl"), "--responses", str(PROJECT_ROOT / "data" / "processed" / "topics" / "topic_mapping_llm_responses.jsonl"), "--limit", "0", "--require-complete", "--continue-on-errors"]))
         commands.append(("将必选模型匹配结果写入话题审核表", [python, str(PROJECT_ROOT / "scripts" / "topics" / "merge_mapping_evidence.py"), "--tasks", str(PROJECT_ROOT / "data" / "processed" / "topics" / "topic_mapping_llm_tasks.jsonl"), "--responses", str(PROJECT_ROOT / "data" / "processed" / "topics" / "topic_mapping_llm_responses.jsonl"), "--workbench", str(PROJECT_ROOT / "data" / "review" / "topics" / "taxonomy_review_workbench.csv")]))
         commands.append(("话题体系人工审核与发布门禁", ["__TOPIC_REVIEW_GATE__"]))
         if taxonomy_validation_enabled:
             commands.append(("生成正式话题体系模型核验任务", [python, str(PROJECT_ROOT / "scripts" / "topics" / "build_taxonomy_validation_task.py"), "--taxonomy", str(CURATED_TAXONOMY_PATH), "--output", str(PROJECT_ROOT / "data" / "processed" / "topics" / "taxonomy_validation_llm_tasks.jsonl")]))
-            commands.append(("正式话题体系大模型核验（可选）", [python, str(PROJECT_ROOT / "scripts" / "workflow" / "run_validation_llm.py"), "--mode", "topics", "--tasks", str(PROJECT_ROOT / "data" / "processed" / "topics" / "taxonomy_validation_llm_tasks.jsonl"), "--responses", str(PROJECT_ROOT / "data" / "processed" / "topics" / "taxonomy_validation_llm_responses.jsonl"), "--limit", "1", "--reset", "--require-complete"]))
+            commands.append(("正式话题体系大模型核验（可选）", [python, str(PROJECT_ROOT / "scripts" / "workflow" / "run_validation_llm.py"), "--mode", "topics", "--tasks", str(PROJECT_ROOT / "data" / "processed" / "topics" / "taxonomy_validation_llm_tasks.jsonl"), "--responses", str(PROJECT_ROOT / "data" / "processed" / "topics" / "taxonomy_validation_llm_responses.jsonl"), "--limit", "1", "--reset", "--require-complete", "--continue-on-errors"]))
     if term_selected:
         if not topic_selected and not CURATED_TAXONOMY_PATH.exists():
             raise ValueError("领域典型术语识别前必须先完成人工话题体系审核并发布正式 taxonomy.json")

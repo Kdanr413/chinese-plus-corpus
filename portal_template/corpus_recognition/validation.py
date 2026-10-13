@@ -60,6 +60,14 @@ class TermValidationService:
         self.repository = repository
 
     def _unavailable(self, provider: object, exc: Exception) -> ValidatorResult:
+        import os
+        transport=getattr(provider,'transport',None)
+        request=getattr(transport,'last_request',None)
+        if request and os.environ.get('CORPUS_PROJECT_ROOT') and not hasattr(provider,'failed_documents'):
+            from scripts.workflow.model_errors import ModelErrors
+            if getattr(transport,'cache',None) and request.get('cache_key'):
+                transport.cache.path(request['cache_key']).unlink(missing_ok=True)
+            ModelErrors().record('validation',request['url'],request['body'],exc,getattr(getattr(provider,'settings',None),'api_key',''),{'cache_key':request.get('cache_key'),'bindings':request.get('bindings',{})})
         template = self.prompt.template
         return ValidatorResult(
             validator=str(getattr(provider, "name", type(provider).__name__)),

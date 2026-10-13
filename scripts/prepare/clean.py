@@ -7,6 +7,9 @@ import shutil
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
+import sys
+sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
+from scripts.workflow.file_paths import io_path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -306,7 +309,7 @@ INITIAL_TOPIC_RULES = [
 
 def configure_domain(config_path: Path):
     global DOMAIN_KEYWORDS, DEFAULT_DOMAIN, DOMAIN_RULES, INITIAL_TOPIC_RULES
-    with config_path.open("r", encoding="utf-8-sig") as handle:
+    with io_path(config_path).open("r", encoding="utf-8-sig") as handle:
         config = json.load(handle)
     DOMAIN_KEYWORDS = list(config.get("relevance_keywords", DOMAIN_KEYWORDS))
     DEFAULT_DOMAIN = str(config.get("default_domain", DEFAULT_DOMAIN))
@@ -337,6 +340,7 @@ CRAWLER_GENERIC_PAGE_TITLES = {
 
 
 def read_text(path: Path) -> str:
+    path=io_path(path)
     for enc in ("utf-8-sig", "utf-8", "gb18030", "big5", "latin-1"):
         try:
             return path.read_text(encoding=enc, errors="strict")
@@ -989,7 +993,7 @@ def family_key(path: Path):
 
 
 def load_inventory():
-    with ANALYSIS_DETAIL.open("r", encoding="utf-8-sig", newline="") as f:
+    with io_path(ANALYSIS_DETAIL).open("r", encoding="utf-8-sig", newline="") as f:
         rows = list(csv.DictReader(f))
     # The inventory is already scoped by the workbench selection manifest.
     # Quality labels are advisory: silently applying them as a second filter
@@ -1171,7 +1175,7 @@ def build_sentence_rows(doc_id: str, paragraph_rows):
 def write_clean_source_text(doc):
     source_type_dir = OUT_CLEAN_TEXT_DIR / safe_filename(doc["source_type"])
     source_dir = source_type_dir / safe_filename(doc["source"])
-    source_dir.mkdir(parents=True, exist_ok=True)
+    io_path(source_dir).mkdir(parents=True, exist_ok=True)
     # Portal workspaces add several parent directories. Keep the generated
     # filename within a conservative Windows path budget; the full title is
     # retained in the text header and metadata, and doc_id keeps names unique.
@@ -1204,7 +1208,7 @@ def write_clean_source_text(doc):
         doc["text"],
         "",
     ]
-    path.write_text("\n".join(header), encoding="utf-8")
+    io_path(path).write_text("\n".join(header), encoding="utf-8")
     return str(path)
 
 
@@ -1214,7 +1218,7 @@ def main():
     if OUT_CLEAN_TEXT_DIR.exists():
         if OUT_CLEAN_TEXT_DIR.name != "clean_text_by_source":
             raise RuntimeError(f"Refusing to clear unexpected output directory: {OUT_CLEAN_TEXT_DIR}")
-        shutil.rmtree(OUT_CLEAN_TEXT_DIR)
+        shutil.rmtree(io_path(OUT_CLEAN_TEXT_DIR))
 
     out_dirs = [
         OUT_JSONL.parent,
@@ -1226,7 +1230,7 @@ def main():
         OUT_REPORT.parent,
     ]
     for out_dir in out_dirs:
-        out_dir.mkdir(parents=True, exist_ok=True)
+        io_path(out_dir).mkdir(parents=True, exist_ok=True)
 
     rows = load_inventory()
     docs = []
@@ -1378,12 +1382,12 @@ def main():
         row["_sentences"] = sentence_rows
 
     # Write document-level corpus.
-    with OUT_JSONL.open("w", encoding="utf-8", newline="\n") as f:
+    with io_path(OUT_JSONL).open("w", encoding="utf-8", newline="\n") as f:
         for doc in docs:
             f.write(json.dumps(doc, ensure_ascii=False) + "\n")
 
     # Write section-level corpus.
-    with OUT_SECTIONS_JSONL.open("w", encoding="utf-8", newline="\n") as f:
+    with io_path(OUT_SECTIONS_JSONL).open("w", encoding="utf-8", newline="\n") as f:
         for row in rows:
             sections = row.get("_sections")
             if not sections:
@@ -1414,7 +1418,7 @@ def main():
                 f.write(json.dumps(sec_out, ensure_ascii=False) + "\n")
 
     # Write paragraph-level corpus.
-    with OUT_PARAGRAPHS_JSONL.open("w", encoding="utf-8", newline="\n") as f:
+    with io_path(OUT_PARAGRAPHS_JSONL).open("w", encoding="utf-8", newline="\n") as f:
         for row in rows:
             paragraphs = row.get("_paragraphs")
             if not paragraphs:
@@ -1443,7 +1447,7 @@ def main():
                 f.write(json.dumps(para_out, ensure_ascii=False) + "\n")
 
     # Write sentence-level corpus.
-    with OUT_SENTENCES_JSONL.open("w", encoding="utf-8", newline="\n") as f:
+    with io_path(OUT_SENTENCES_JSONL).open("w", encoding="utf-8", newline="\n") as f:
         for row in rows:
             sentences = row.get("_sentences")
             if not sentences:
@@ -1500,7 +1504,7 @@ def main():
         "original_path",
         "relative_path",
     ]
-    with OUT_META.open("w", encoding="utf-8-sig", newline="") as f:
+    with io_path(OUT_META).open("w", encoding="utf-8-sig", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=meta_fields)
         writer.writeheader()
         for doc in docs:
@@ -1541,7 +1545,7 @@ def main():
         "total_clean_chars": sum(doc["clean_chars"] for doc in docs),
         "total_norm_chars": sum(doc["norm_chars"] for doc in docs),
     }
-    OUT_REPORT.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    io_path(OUT_REPORT).write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2))
 
 

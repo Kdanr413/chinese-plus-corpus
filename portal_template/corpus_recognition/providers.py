@@ -57,6 +57,7 @@ class OpenAICompatibleChatTransport:
         timeout_seconds: float,
     ) -> str:
         key,bindings=self.cache.identify(base_url,model,messages,self.model_version) if self.cache else ('',{})
+        self.last_request={'url':chat_completions_url(base_url),'body':{'model':model,'temperature':0.1,'messages':messages},'cache_key':key,'bindings':bindings}
         cached=self.cache.get(key,bindings) if self.cache else None
         if cached is not None:return cached
         body = json.dumps(
@@ -69,19 +70,25 @@ class OpenAICompatibleChatTransport:
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             method="POST",
         )
-        try:
-            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
-                payload = json.loads(response.read().decode("utf-8", errors="replace"))
-            content = payload.get("choices", [{}])[0].get("message", {}).get("content")
-            if content is None or not str(content).strip():
-                raise ValidatorResponseError("model response has empty message.content")
-            if self.cache:self.cache.put(key,bindings,str(content))
-            return str(content)
-        except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")
-            raise ValidatorUnavailableError(f"validator HTTP {exc.code}: {detail or exc.reason}") from exc
-        except urllib.error.URLError as exc:
-            raise ValidatorUnavailableError(f"validator connection failed: {exc.reason}") from exc
+        last_error=None
+        for attempt in range(1,3):
+            try:
+                with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+                    payload = json.loads(response.read().decode("utf-8", errors="replace"))
+                content = payload.get("choices", [{}])[0].get("message", {}).get("content")
+                if content is None or not str(content).strip():
+                    raise ValidatorResponseError("model response has empty message.content")
+                from scripts.workflow.prompting import parse_json_content
+                parse_json_content(str(content))
+                if self.cache:self.cache.put(key,bindings,str(content))
+                return str(content)
+            except Exception as error:
+                last_error=error
+                if isinstance(error,urllib.error.HTTPError) and error.code not in {408,429,500,502,503,504}:break
+        if os.environ.get('CORPUS_PROJECT_ROOT'):
+            from scripts.workflow.model_errors import ModelErrors
+            ModelErrors().record('recognition',chat_completions_url(base_url),json.loads(body),last_error,api_key,{'cache_key':key,'bindings':bindings,'request_attempts':attempt})
+        raise ValidatorUnavailableError(f"model request failed after {attempt} attempt(s): {type(last_error).__name__}: {str(last_error).replace(api_key,'[REDACTED]') if api_key else last_error}") from last_error
 
 
 @dataclass(frozen=True)

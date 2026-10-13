@@ -1317,7 +1317,7 @@ class WorkflowManager:
         system_prompt, user_prompt = render_prompts(
             tasks[0], public_taxonomy(taxonomy), settings, MODEL_RESULT_SCHEMA
         )
-        response = call_model(settings, api_key, system_prompt, user_prompt, MODEL_RESULT_SCHEMA)
+        response = call_model({**settings,"_max_attempts":1}, api_key, system_prompt, user_prompt, MODEL_RESULT_SCHEMA)
         parsed = validate_model_result(response["parsed"], taxonomy)
         return {
             "notice": "提示词测试结果未保存，也没有修改任何工作体系",

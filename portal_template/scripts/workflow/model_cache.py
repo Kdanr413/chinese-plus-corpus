@@ -7,6 +7,7 @@ import tempfile
 from pathlib import Path
 from datetime import datetime, timezone
 from .prompting import chat_completions_url, parse_json_content
+from .file_paths import io_path
 
 REFERENCE_KEYS={'doc_id','document_id','paragraph_id','sentence_id','run_id','task_index'}
 
@@ -38,7 +39,7 @@ def normalize_messages(messages):
     return result,bindings
 
 class AnnotationCache:
-    def __init__(self,root):self.root=Path(root)
+    def __init__(self,root):self.root=io_path(root)
     def identify(self,base_url,model,messages,model_version=''):
         normalized,bindings=normalize_messages(messages)
         request={'format':1,'endpoint':chat_completions_url(base_url),'model':model,'model_version':model_version or model,'temperature':0.1,'messages':normalized}

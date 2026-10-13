@@ -16,6 +16,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0,str(PROJECT_ROOT))
+from scripts.workflow.file_paths import io_path
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -26,12 +28,14 @@ def split_sentences(paragraph: str) -> list[str]:
 
 
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
+    path=io_path(path)
     if not path.exists():
         return []
     return [json.loads(line) for line in path.read_text(encoding="utf-8-sig").splitlines() if line.strip()]
 
 
 def write_jsonl(path: Path, rows: Iterable[dict[str, Any]]) -> None:
+    path=io_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows), encoding="utf-8")
 
@@ -78,10 +82,10 @@ def safe_cleaning_correction(
 def prepare(args: argparse.Namespace) -> int:
     # Preserve the task-to-response mapping before creating a new round.
     if args.tasks.exists() and args.responses.exists():
-        archive=PROJECT_ROOT/'data/model_annotations/runs'/datetime.now().strftime('%Y%m%d-%H%M%S-%f')
+        archive=io_path(PROJECT_ROOT/'data/model_annotations/runs'/datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
         archive.mkdir(parents=True,exist_ok=False)
-        shutil.copy2(args.tasks,archive/'cleaning-tasks.jsonl')
-        shutil.copy2(args.responses,archive/'cleaning-responses.jsonl')
+        shutil.copy2(io_path(args.tasks),archive/'cleaning-tasks.jsonl')
+        shutil.copy2(io_path(args.responses),archive/'cleaning-responses.jsonl')
     paragraphs = read_jsonl(args.corpus_root / "paragraphs.jsonl")
     tasks: list[dict[str, Any]] = []
     for index, row in enumerate(paragraphs):
@@ -135,10 +139,10 @@ def apply(args: argparse.Namespace) -> int:
             row["text"] = corrected; row["char_count"] = len(corrected); row["text_hash"] = digest(corrected); changed += 1
 
     if changed:
-        backup = args.output_root / "backup_before_apply"
+        backup = io_path(args.output_root / "backup_before_apply")
         backup.mkdir(parents=True, exist_ok=True)
         for path in paths.values():
-            if path.exists() and not (backup / path.name).exists(): shutil.copy2(path, backup / path.name)
+            if path.exists() and not (backup / path.name).exists(): shutil.copy2(io_path(path), backup / path.name)
         write_jsonl(paths["paragraphs.jsonl"], paragraphs)
         by_doc: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for row in paragraphs: by_doc[str(row["doc_id"])].append(row)
@@ -167,13 +171,16 @@ def apply(args: argparse.Namespace) -> int:
             doc["text"] = text; doc["clean_chars"] = len(text); doc["norm_chars"] = len(re.sub(r"\s+", "", text)); doc["text_hash"] = digest(text); doc["sentence_count"] = sentence_counts[str(doc["doc_id"])]
             clean_path_value = str(doc.get("clean_text_path", "")).strip()
             if clean_path_value:
-                clean_path = Path(clean_path_value); clean_path.parent.mkdir(parents=True, exist_ok=True); clean_path.write_text(text, encoding="utf-8")
+                from scripts.workflow.file_paths import io_path
+                clean_path = io_path(clean_path_value); clean_path.parent.mkdir(parents=True, exist_ok=True); clean_path.write_text(text, encoding="utf-8")
         write_jsonl(paths["documents.jsonl"], docs)
 
-    args.output_root.mkdir(parents=True, exist_ok=True)
+    io_path(args.output_root).mkdir(parents=True, exist_ok=True)
     decisions = Counter(str(row.get("decision", "unknown")) for row in response_by_id.values())
-    report = {"applied_at": datetime.now().astimezone().isoformat(timespec="seconds"), "response_records": len(responses), "parsed_records": len(response_by_id), "decisions": dict(decisions), "human_review_required": decisions.get("needs_human_review", 0), "paragraphs_changed": changed, "applied_details": applied_details, "unsafe_proposals_rejected": len(rejected), "rejected_details": rejected}
-    (args.output_root / "llm_cleaning_report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    latest={str(row.get('task_index')):row for row in responses if row.get('task_index') is not None}
+    failed_requests=[row for row in latest.values() if row.get('status')=='error']
+    report = {"applied_at": datetime.now().astimezone().isoformat(timespec="seconds"), "response_records": len(responses), "parsed_records": len(response_by_id), "decisions": dict(decisions), "human_review_required": decisions.get("needs_human_review", 0), "paragraphs_changed": changed, "applied_details": applied_details, "unsafe_proposals_rejected": len(rejected), "rejected_details": rejected,'failed_model_requests':len(failed_requests),'pending_failed_task_indexes':[row['task_index'] for row in failed_requests]}
+    io_path(args.output_root / "llm_cleaning_report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2))
     return 0
 

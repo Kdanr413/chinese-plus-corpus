@@ -36,6 +36,7 @@ from .service import (
 from .platform import router as platform_router
 from .recognition import router as recognition_router
 from .workbench import router as workbench_router
+from .model_errors import router as model_errors_router
 from .topic_workflow import router as topic_workflow_router
 
 
@@ -251,6 +252,7 @@ def create_app(
         )
 
     application.include_router(workbench_router)
+    application.include_router(model_errors_router)
     application.include_router(platform_router)
     application.include_router(recognition_router)
     application.include_router(topic_workflow_router)

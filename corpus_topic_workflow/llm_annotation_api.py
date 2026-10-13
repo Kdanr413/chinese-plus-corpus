@@ -444,7 +444,7 @@ def parse_model_json(text: str) -> dict:
     return value
 
 
-def call_model(
+def _call_model_once(
     config: dict, api_key: str, system_prompt: str, user_prompt: str,
     output_schema: dict | None = None,
 ) -> dict:
@@ -492,3 +492,20 @@ def call_model(
         "effective_api_style": effective_api_style(config),
         "endpoint_url": safe_endpoint_url(url),
     }
+
+
+def call_model(config: dict, api_key: str, system_prompt: str, user_prompt: str, output_schema: dict | None = None) -> dict:
+    # Tests are single-item requests; batch failures are retried, recorded and
+    # handled by the existing per-cluster checkpoint loop.
+    attempts=max(1,min(int(config.get('_max_attempts',2)),3))
+    error=None
+    for attempt in range(1,attempts+1):
+        try:return _call_model_once(config,api_key,system_prompt,user_prompt,output_schema)
+        except Exception as exc:
+            error=exc
+            if getattr(exc,'api_status',None) in {400,401,403,404}:break
+    if os.environ.get('CORPUS_PROJECT_ROOT'):
+        from scripts.workflow.model_errors import ModelErrors
+        url,body=build_request(config,system_prompt,user_prompt,output_schema or OUTPUT_SCHEMA,structured=config.get('structured_output','auto')!='prompt_only')
+        ModelErrors().record('topic_review',url,body,error,api_key,{'request_attempts':attempt})
+    raise error

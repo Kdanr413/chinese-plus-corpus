@@ -7,7 +7,7 @@ import re
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
-from .errors import ValidatorResponseError
+from .errors import ValidatorResponseError,ValidatorUnavailableError
 from .models import Document, TermCandidate, TermValidationRequest, ValidatorResult
 from .prompts import PromptSnapshot
 from .providers import OpenAICompatibleChatTransport, ResolvedValidatorSettings
@@ -99,11 +99,29 @@ class SentenceTermIntersectionProvider:
         self.model_version = settings.model_version
         self.terms_by_document: dict[str, set[str]] = {}
         self.evidence_by_document: dict[str, dict[str, Any]] = {}
+        self.failed_documents: dict[str,str] = {}
         checkpoint = checkpoint_callback or (lambda: None)
         for index, document in enumerate(documents, start=1):
             checkpoint()
-            payload = self._extract(document)
-            terms, evidence = _term_values(payload)
+            try:
+                payload = self._extract(document)
+                terms, evidence = _term_values(payload)
+            except Exception as error:
+                self.failed_documents[document.document_id]=str(error)
+                import os
+                if os.environ.get('CORPUS_PROJECT_ROOT'):
+                    from scripts.workflow.model_errors import ModelErrors
+                    messages=self._messages(document)
+                    body={'model':self.settings.model,'temperature':0.1,'messages':messages}
+                    from scripts.workflow.prompting import chat_completions_url
+                    cache=getattr(self.transport,'cache',None)
+                    key,bindings=cache.identify(self.settings.base_url,self.settings.model,messages,self.settings.model_version) if cache else ('',{})
+                    if cache:cache.path(key).unlink(missing_ok=True)
+                    ModelErrors().record('sentence_term',chat_completions_url(self.settings.base_url),body,error,self.settings.api_key,{'cache_key':key,'bindings':bindings,'document_id':document.document_id})
+
+                self.evidence_by_document[document.document_id]={'status':'unavailable','error':str(error)}
+                if progress_callback:progress_callback(index,len(documents),self.name)
+                continue
             self.terms_by_document[document.document_id] = terms
             self.evidence_by_document[document.document_id] = {
                 "model_terms": sorted(terms), "term_evidence": evidence,
@@ -112,13 +130,9 @@ class SentenceTermIntersectionProvider:
             if progress_callback:
                 progress_callback(index, len(documents), self.name)
 
-    def _extract(self, document: Document) -> dict[str, Any]:
-        template = self.prompt.template
-        content = self.transport.complete(
-            base_url=self.settings.base_url,
-            api_key=self.settings.api_key,
-            model=self.settings.model,
-            messages=[
+    def _messages(self, document):
+        template=self.prompt.template
+        return [
                 {"role": "system", "content": template.system_prompt},
                 {
                     "role": "user",
@@ -129,13 +143,23 @@ class SentenceTermIntersectionProvider:
                         "analysis_unit_type": document.metadata.get("analysis_unit_type"),
                     }, ensure_ascii=False),
                 },
-            ],
+            ]
+
+    def _extract(self, document: Document) -> dict[str, Any]:
+        template = self.prompt.template
+        content = self.transport.complete(
+            base_url=self.settings.base_url,
+            api_key=self.settings.api_key,
+            model=self.settings.model,
+            messages=self._messages(document),
             timeout_seconds=self.timeout_seconds,
         )
         return _json_payload(content)
 
     def validate_term(self, request: TermValidationRequest) -> ValidatorResult:
         candidate: TermCandidate = request.candidate
+        if candidate.document_id in self.failed_documents:
+            raise ValidatorUnavailableError(self.failed_documents[candidate.document_id])
         model_terms = self.terms_by_document.get(candidate.document_id, set())
         normalized = candidate.normalized_form.strip()
         accepted = normalized in model_terms or candidate.surface_form.strip() in model_terms

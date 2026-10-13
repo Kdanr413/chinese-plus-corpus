@@ -32,9 +32,12 @@ def main() -> int:
     parser.add_argument("--max-attempts", type=int, default=3, help="单条任务遇到空回复、解析或临时接口错误时的最多尝试次数")
     parser.add_argument("--prompt-config", type=Path, default=PROJECT_ROOT / "configs" / "llm" / "prompts.json")
     parser.add_argument('--cache-root',type=Path,default=PROJECT_ROOT/'data/model_annotations')
+    parser.add_argument('--retry-failed',action='store_true',help='只重跑上一轮错误或未完成条目，不清空成功回复')
+    parser.add_argument('--continue-on-errors',action='store_true',help='条目失败记账，完整遍历后允许后续步骤继续')
     args = parser.parse_args()
     if args.limit < 0:
         parser.error('--limit 不能为负数；0 表示不限制任务数')
+    if args.retry_failed and args.reset:parser.error('重跑失败项不能同时使用 --reset')
     prefix = "CLEANING" if args.mode == "cleaning" else ("TOPIC" if args.mode == "topics" else "TERM")
     api_key = os.environ.get(f"{prefix}_LLM_API_KEY", "")
     model = os.environ.get(f"{prefix}_LLM_MODEL", "")
@@ -110,6 +113,8 @@ def main() -> int:
             if record.get("status") != "success":
                 last = attempt_errors[-1] if attempt_errors else {"error_type": "unknown", "error": "未知错误"}
                 record.update({"status": "error", "attempt_count": len(attempt_errors), "error_type": last["error_type"], "error": last["error"], "failed_attempts": attempt_errors})
+                from scripts.workflow.model_errors import ModelErrors
+                record['failure_id']=ModelErrors(PROJECT_ROOT).record(args.mode,chat_completions_url(base_url),json.loads(body),RuntimeError(last['error']),api_key,{'cache_key':cache_key,'bindings':bindings,'task_index':index})
                 failed += 1
             output.write(json.dumps(record, ensure_ascii=False) + "\n"); output.flush(); executed += 1
             print(f'CORPUS_PROGRESS\t{min(100, int((len(completed)+executed)/max(1,len(tasks))*100))}\t模型复核 {len(completed)+executed}/{len(tasks)}；复用 {reused} 条',flush=True)
@@ -124,7 +129,7 @@ def main() -> int:
                 }, ensure_ascii=False), flush=True)
     remaining = max(len(tasks) - len(completed) - executed, 0)
     print(json.dumps({"mode": args.mode, "executed": executed, "failed": failed, "remaining": remaining,'cache_reused':reused}, ensure_ascii=False))
-    return 2 if args.require_complete and (failed or remaining) else 0
+    return 2 if args.require_complete and (remaining or (failed and not args.continue_on_errors)) else 0
 
 
 if __name__ == "__main__": raise SystemExit(main())

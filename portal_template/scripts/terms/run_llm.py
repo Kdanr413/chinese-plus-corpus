@@ -13,6 +13,10 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+import sys
+sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
+from scripts.workflow.model_errors import ModelErrors
+from scripts.workflow.prompting import chat_completions_url
 
 
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -39,7 +43,7 @@ def parse_terms(content: str) -> list[str]:
 
 def request(base_url: str, api_key: str, model: str, prompt: str) -> tuple[dict[str, Any], str]:
     body = json.dumps({"model": model, "temperature": 0.1, "messages": [{"role": "user", "content": prompt}]}, ensure_ascii=False).encode("utf-8")
-    req = urllib.request.Request(base_url.rstrip("/") + "/chat/completions", data=body, headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}, method="POST")
+    req = urllib.request.Request(chat_completions_url(base_url), data=body, headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=120) as response:
             payload = json.loads(response.read().decode("utf-8"))
@@ -83,7 +87,8 @@ def main() -> int:
                 append_jsonl(args.responses, {"sentence_id": sentence_id, "run_id": run_id, "model": args.model, "received_at": timestamp, "status": "success", "raw_content": content, "response_payload": payload, "parsed_terms": terms})
                 append_jsonl(args.results, {"sentence_id": sentence_id, "run_id": run_id, "model": args.model, "terms": terms, "response_status": "success"})
             except Exception as exc:
-                append_jsonl(args.responses, {"sentence_id": sentence_id, "run_id": run_id, "model": args.model, "received_at": timestamp, "status": "error", "error": str(exc)})
+                failure_id=ModelErrors().record('legacy_terms',chat_completions_url(args.base_url),{'model':args.model,'temperature':0.1,'messages':[{'role':'user','content':str(task.get('prompt',''))}]},exc,api_key,{'sentence_id':sentence_id,'run_id':run_id})
+                append_jsonl(args.responses, {"sentence_id": sentence_id, "run_id": run_id, "model": args.model, "received_at": timestamp, "status": "error", "error": str(exc), "failure_id":failure_id})
             executed += 1
             time.sleep(0.2)
     print(json.dumps({"executed": executed, "status": "complete"}, ensure_ascii=False))
