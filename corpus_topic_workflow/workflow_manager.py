@@ -1262,46 +1262,47 @@ class WorkflowManager:
         self, round_id: str, model_id: str, settings: dict[str, Any], api_key: str,
         *, resume: bool = False,
     ) -> dict[str, Any]:
-        model_id = sanitize_identifier(model_id)
-        if not model_id:
-            raise ValueError("model_id 不能为空")
-        round_state = self.read_round(round_id)
-        if round_state.get("status") not in {"clustered", "model_review", "models_completed", "human_review"}:
-            raise ValueError("必须先完成本轮聚类")
-        if self._active_model_job(round_id, model_id):
-            raise ValueError("该模型分支正在运行，不能重复启动")
-        paths = self._model_paths(round_id, model_id)
-        existing = read_jsonl(paths["annotations"])
-        if resume and not existing and not paths["checkpoint"].exists():
-            raise ValueError("该模型分支没有可恢复的断点")
-        if resume:
-            saved_settings = read_json(paths["settings"], {})
-            if saved_settings:
-                requested_settings = settings
-                settings = saved_settings
-                # Allow safe runtime tuning after timeouts/empty outputs without changing the branch model or prompts.
-                for key in ("structured_output", "timeout_seconds", "max_output_tokens"):
-                    if key in requested_settings and requested_settings[key] not in {None, ""}:
-                        settings[key] = requested_settings[key]
-        if not resume and existing:
-            raise ValueError("该模型分支已有结果；请使用“继续运行”，或更换模型分支ID")
-        validate_config(settings)
-        if not api_key:
-            raise ValueError("必须为该模型提供 API Key")
-        job = self._new_job("model_review", round_id, {"model_id": model_id, "resume": resume})
-        models = [row for row in round_state.get("models", []) if row.get("model_id") != model_id]
-        successes = self._successful_model_results(round_id, model_id) if resume else {}
-        models.append({
-            "model_id": model_id, "model": settings.get("model", ""), "status": "running",
-            "completed": len(successes), "failed": 0, "resumable": False,
-        })
-        round_state.update(status="model_review", stage=2, models=models)
-        self.write_round(round_state)
-        threading.Thread(
-            target=self._run_model_guarded,
-            args=(job["job_id"], model_id, copy.deepcopy(settings), api_key, resume), daemon=True,
-        ).start()
-        return job
+        with self.lock:
+            model_id = sanitize_identifier(model_id)
+            if not model_id:
+                raise ValueError("model_id 不能为空")
+            round_state = self.read_round(round_id)
+            if round_state.get("status") not in {"clustered", "model_review", "models_completed", "human_review"}:
+                raise ValueError("必须先完成本轮聚类")
+            if self._active_model_job(round_id, model_id):
+                raise ValueError("该模型分支正在运行，不能重复启动")
+            paths = self._model_paths(round_id, model_id)
+            existing = read_jsonl(paths["annotations"])
+            if resume and not existing and not paths["checkpoint"].exists():
+                raise ValueError("该模型分支没有可恢复的断点")
+            if resume:
+                saved_settings = read_json(paths["settings"], {})
+                if saved_settings:
+                    requested_settings = settings
+                    settings = saved_settings
+                    # Allow safe runtime tuning after timeouts/empty outputs without changing the branch model or prompts.
+                    for key in ("structured_output", "timeout_seconds", "max_output_tokens"):
+                        if key in requested_settings and requested_settings[key] not in {None, ""}:
+                            settings[key] = requested_settings[key]
+            if not resume and existing:
+                raise ValueError("该模型分支已有结果；请使用“继续运行”，或更换模型分支ID")
+            validate_config(settings)
+            if not api_key:
+                raise ValueError("必须为该模型提供 API Key")
+            job = self._new_job("model_review", round_id, {"model_id": model_id, "resume": resume})
+            models = [row for row in round_state.get("models", []) if row.get("model_id") != model_id]
+            successes = self._successful_model_results(round_id, model_id) if resume else {}
+            models.append({
+                "model_id": model_id, "model": settings.get("model", ""), "status": "running",
+                "completed": len(successes), "failed": 0, "resumable": False,
+            })
+            round_state.update(status="model_review", stage=2, models=models)
+            self.write_round(round_state)
+            threading.Thread(
+                target=self._run_model_guarded,
+                args=(job["job_id"], model_id, copy.deepcopy(settings), api_key, resume), daemon=True,
+            ).start()
+            return job
 
     def test_model(
         self, round_id: str, settings: dict[str, Any], api_key: str,

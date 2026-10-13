@@ -19,6 +19,22 @@ from corpus_topic_workflow import WorkflowManager
 
 
 class TopicWorkflowIntegrationTests(unittest.TestCase):
+    def test_source_profile_cache_invalidates_after_input_changes(self):
+        from corpus_api import topic_workflow as api
+        config={'min_analysis_characters':1,'max_analysis_characters':100,'structural_noise_exact':[],'structural_noise_regex':[],'exclude_structural_noise':False}
+        api._cached_source_profile.cache_clear()
+        with TemporaryDirectory() as directory:
+            source=Path(directory)/'sentences.jsonl';source.write_text('one')
+            with patch.object(api,'load_bertopic_config',return_value={'input':config}),patch.object(api,'build_units',return_value=([{},{}],[],{})) as build:
+                self.assertEqual(api._source_profile(source),api._source_profile(source))
+                self.assertEqual(build.call_count,1)
+                source.write_text('different text')
+                api._source_profile(source)
+                self.assertEqual(build.call_count,2)
+                config['min_analysis_characters']=2
+                api._source_profile(source)
+                self.assertEqual(build.call_count,3)
+        api._cached_source_profile.cache_clear()
     def test_parallel_cluster_submissions_reserve_one_job(self):
         manager=object.__new__(WorkflowManager)
         manager.lock=threading.RLock();manager.jobs={}

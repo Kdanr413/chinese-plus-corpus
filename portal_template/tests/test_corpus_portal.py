@@ -6,7 +6,7 @@ import unittest
 import uuid
 from datetime import datetime,timezone
 from pathlib import Path
-from unittest.mock import MagicMock,patch
+from unittest.mock import MagicMock,patch,AsyncMock
 from fastapi.testclient import TestClient
 from corpus_portal.app import create_app,COOKIE
 from corpus_portal.workspaces import PortalSettings,verify_payload,initialize_workspace
@@ -108,6 +108,16 @@ class PortalTests(unittest.TestCase):
         self.assertEqual(self.alice.get('/_portal/api/me').status_code,200)
         self.assertEqual(self.alice.post('/_portal/api/logout',json={},headers={'x-csrf-token':response.json()['csrf_token']}).status_code,200)
         self.assertEqual(self.alice.get('/_portal/api/me').status_code,401)
+    def test_project_proxy_timeout_reports_uncertain_task_status(self):
+        import httpx
+        from types import SimpleNamespace
+        client=MagicMock();client.request=AsyncMock(side_effect=httpx.ReadTimeout('test timeout'))
+        with patch.object(self.supervisor,'ensure',return_value=SimpleNamespace(port=9000,token='test-internal-token')),patch('corpus_portal.app.httpx.AsyncClient') as factory:
+            factory.return_value.__aenter__.return_value=client
+            response=self.alice.get(f'/p/{self.pid}/api/status')
+        self.assertEqual(response.status_code,504)
+        self.assertIn('可能已被后台接受',response.json()['detail'])
+        self.assertIn('不要重复提交',response.json()['detail'])
     def share(self):
         r=self.alice.post(f'/_portal/api/projects/{self.pid}/shares',json={'version':'1.0'},headers=self.a)
         self.assertEqual(r.status_code,201,r.text);return r.json()

@@ -163,7 +163,12 @@ def create_app(settings=None,store=None,supervisor=None,share_loader=None):
         headers={'x-corpus-internal':worker.token,'x-admin-token':worker.token}
         if 'content-type' in request.headers: headers['content-type']=request.headers['content-type']
         async with httpx.AsyncClient(timeout=httpx.Timeout(180,connect=5),trust_env=False) as client:
-            result=await client.request(request.method,f'http://127.0.0.1:{worker.port}/'+path,params=list(request.query_params.multi_items()),headers=headers,content=content)
+            try:
+                result=await client.request(request.method,f'http://127.0.0.1:{worker.port}/'+path,params=list(request.query_params.multi_items()),headers=headers,content=content)
+            except httpx.TimeoutException as exc:
+                raise HTTPException(504,'项目服务响应超时，操作可能已被后台接受；请先查看任务状态，不要重复提交。') from exc
+            except httpx.RequestError as exc:
+                raise HTTPException(502,'暂时无法连接项目服务，请稍后刷新检查任务状态；不要重复提交。') from exc
         return response(result,f'/p/{pid}',u['csrf_token'])
     @app.get('/share/{token}/{path:path}')
     async def share_proxy(token:str,path:str,request:Request):

@@ -12,6 +12,7 @@ import os
 import shutil
 import sys
 import threading
+from functools import lru_cache
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
@@ -57,6 +58,13 @@ def _source_profile(path: Path) -> dict[str, Any]:
     if not path.is_file():
         return {"source_path": str(path), "source_unit_count": 0, "sample_size": 0}
     config = load_bertopic_config(PACKAGE_ROOT / "configs" / "bertopic.json")["input"]
+    stat=path.stat()
+    return dict(_cached_source_profile(str(path.resolve()),stat.st_mtime_ns,stat.st_size,json.dumps(config,sort_keys=True)))
+
+@lru_cache(maxsize=4)
+def _cached_source_profile(filename: str, modified: int, size: int, config_json: str) -> dict[str, Any]:
+    path=Path(filename)
+    config=json.loads(config_json)
     units, excluded, policy = build_units(
         path,
         int(config["min_analysis_characters"]),
