@@ -62,7 +62,7 @@ PROMPT_TEST_ROOT = PROJECT_ROOT / "reports" / "prompt_tests"
 PROMPT_KEYS = {"cleaning_validation", "topic_mapping", "taxonomy_validation", "term_validation"}
 
 UPLOAD_TARGETS = {
-    "topic_taxonomy": PROJECT_ROOT / "configs" / "topics" / "new_energy_candidate_taxonomy.json",
+    "topic_taxonomy": PROJECT_ROOT / "configs" / "topics" / "reference_taxonomy.json",
     "domain_lexicon": PROJECT_ROOT / "inputs" / "linguistic" / "domain_lexicon.csv",
     "terminology": PROJECT_ROOT / "inputs" / "linguistic" / "terminology.csv",
     "segmentation_notes": PROJECT_ROOT / "inputs" / "linguistic" / "segmentation_notes.csv",
@@ -557,7 +557,7 @@ def resource_summary(config_path: Path) -> list[dict[str, Any]]:
             count = sum(bool(row.get("title", "").strip() or row.get("path_or_url", "").strip()) for row in csv_rows)
         template = TEMPLATE_ROOT / TEMPLATE_FILES[key]
         sources = preserved_uploads(key)
-        rows.append({"key": key, "label": label, "path": str(path.relative_to(PROJECT_ROOT)).replace("\\", "/"), "template_path": str(template.relative_to(PROJECT_ROOT)).replace("\\", "/"), "count": count, "description": description, "exists": path.exists(), "source_file_count": len(sources), "source_files": [str(source.relative_to(PROJECT_ROOT)).replace("\\", "/") for source in sources[:20]]})
+        rows.append({"key": key, "label": label, "path": str(path.relative_to(PROJECT_ROOT)).replace("\\", "/"), "template_path": str(template.relative_to(PROJECT_ROOT)).replace("\\", "/"), "count": count, "description": description, "exists": (bool(taxonomy.get("root")) if key == "topic_taxonomy" else path.exists()), "source_file_count": len(sources), "source_files": [str(source.relative_to(PROJECT_ROOT)).replace("\\", "/") for source in sources[:20]]})
     return rows
 
 
@@ -1613,6 +1613,11 @@ class Handler(BaseHTTPRequestHandler):
             raise ValueError("未知上传类型")
         target = UPLOAD_TARGETS[category]
         if category == "topic_taxonomy":
+            configured = read_json(DEFAULT_CONFIG).get("topics", {}).get("reference_taxonomy")
+            if configured and DEFAULT_CONFIG.is_file() and DEFAULT_CONFIG.is_relative_to(PROJECT_ROOT) and target.is_relative_to(PROJECT_ROOT):
+                target = (PROJECT_ROOT / configured).resolve()
+                if not target.is_relative_to((PROJECT_ROOT / "configs").resolve()):
+                    raise ValueError("参考体系只能保存到当前项目 configs 目录")
             if relative.suffix.lower() != ".json":
                 raise ValueError("新版人工参考话题体系必须上传 UTF-8 JSON，不再接受旧版扁平 CSV")
             try:

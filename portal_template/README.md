@@ -76,3 +76,8 @@ python -m corpus_platform serve --setup
 最终交付只有一份完整源码 ZIP及校验记录，与 GitHub 默认分支源码一致，不再分发三套程序或附带核心便携环境。发行维护见 [维护说明](scripts/maintenance/README.md)。第三方许可证见 [第三方声明](THIRD_PARTY_NOTICES.md)，完整多用户说明见 [多用户功能](corpus_portal/README.md)。
 
 步骤模型选择、保存与测试，以及同账号项目名称查重，见 [操作说明](docs/步骤模型配置与项目命名.md)。清洗选择一个明确模型；术语与交叉检验分别选择自己的模型组。
+
+
+### 更换或移除参考话题体系
+
+发行包默认使用空的 `configs/topics/reference_taxonomy.json`，不绑定新能源领域。新能源本体仍保留为可选示例。上传其他领域的参考 JSON 后，新建轮次实际使用上传体系，并在轮次目录保存 `reference_taxonomy.json` 快照。点击上传区的“移除当前参考体系”可移除当前构建参考；原文件与配置归档到当前项目的 `data/reference_archive/日期-编号/`，新轮次从空体系开始。历史轮次、已发布版本、原始语料和上传原件不删除。正在加工时先停止任务再更换参考。参考 JSON 使用“参考文件中心/模板/参考话题体系.json”的 root/children 结构和 taxonomy_version、classification_object 字段。

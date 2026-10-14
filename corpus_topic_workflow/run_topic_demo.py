@@ -1003,7 +1003,7 @@ def main() -> int:
     root = Path(__file__).resolve().parent
     parser = argparse.ArgumentParser(description="独立话题识别 Demo")
     parser.add_argument("--sections", type=Path, required=True)
-    parser.add_argument("--taxonomy", type=Path, default=root / "configs" / "new_energy_candidate_taxonomy.json")
+    parser.add_argument("--taxonomy", type=Path, default=root.parent / "configs" / "topics" / "reference_taxonomy.json")
     parser.add_argument("--term-table", type=Path, default=root / "configs" / "topic_seed_terms.csv")
     parser.add_argument("--config", type=Path, default=root / "configs" / "bertopic.json")
     parser.add_argument(

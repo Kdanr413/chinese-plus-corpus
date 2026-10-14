@@ -29,7 +29,7 @@
     "exclusion_manifest": "data/raw/corpus_exclusions.csv"
   },
   "topics": {
-    "reference_taxonomy": "configs/topics/new_energy_candidate_taxonomy.json",
+    "reference_taxonomy": "configs/topics/reference_taxonomy.json",
     "config": "configs/topics/bertopic.json",
     "mode": "auto",
     "discovery_backend": "legacy_bertopic",

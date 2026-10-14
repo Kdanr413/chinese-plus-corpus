@@ -9,7 +9,8 @@
 | `recognition.json` | 识别、验证、模型数量、聚合和决策规则 |
 | `term_recognition/` | 本地术语基础识别配置 |
 | `prompts/recognition/` | 正式版本化提示词 |
-| `topics/new_energy_candidate_taxonomy.json` | 用户参考话题体系输入 |
+| `topics/reference_taxonomy.json` | 可上传或移除的用户参考体系，发行包初始为空 |
+| `topics/new_energy_candidate_taxonomy.json` | 可选新能源话题本体示例 |
 | `topics/bertopic.json` | 可选聚类参数，不代表主页面固定使用 BERTopic |
 | `collect/` | 网页采集配置 |
 | `governance/` | 来源权利和覆盖目标 |

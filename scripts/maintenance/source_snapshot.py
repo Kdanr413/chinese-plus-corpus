@@ -40,7 +40,7 @@ def program(target):
   for source in (ROOT/name).rglob('*'):
    relative=source.relative_to(ROOT)
    if not source.is_file() or any(x in EXCLUDED for x in relative.parts):continue
-   if source.suffix.lower() not in EXTENSIONS or source.name.startswith('.env') or source.name in {'dynamic_topic_taxonomy.json','step_models.json','step_models.json.tmp'}:continue
+   if source.suffix.lower() not in EXTENSIONS or source.name.startswith('.env') or source.name in {'dynamic_topic_taxonomy.json','reference_taxonomy.json','step_models.json','step_models.json.tmp'}:continue
    copy_file(source,target/relative)
  for name in ['README.md','DEVELOPMENT_STATUS.md','requirements.txt','environment.yml','.env.example','.gitignore','.gitattributes','THIRD_PARTY_NOTICES.md','run.ps1','启动语料库平台.cmd']:copy_file(ROOT/name,target/name)
  for source in (ROOT/'inputs').rglob('*'):
@@ -52,7 +52,7 @@ def program(target):
   put(target/source.relative_to(ROOT),sanitize(text))
  for relative in ['data/raw/manual','data/raw/web','data/releases','data/workspaces','logs']:put(target/relative/'.gitkeep','')
  put(target/'corpus_topic_workflow/configs/dynamic_topic_taxonomy.json',json.dumps(dict(schema_version='3.0',taxonomy_name='用户话题体系',taxonomy_version=1,updated_at='',path_separator=' > ',max_levels=3,topics=[]),ensure_ascii=False,indent=2))
- p=target/'configs/pipeline.json';config=json.loads(p.read_text(encoding='utf-8'));config['workflow']['corpus_version']='0.1.0-draft';config['project']['name']='我的语料库';put(p,json.dumps(config,ensure_ascii=False,indent=2))
+ p=target/'configs/pipeline.json';config=json.loads(p.read_text(encoding='utf-8'));config['workflow']['corpus_version']='0.1.0-draft';config['project']['name']='我的语料库';config.setdefault('topics',{})['reference_taxonomy']='configs/topics/reference_taxonomy.json';put(p,json.dumps(config,ensure_ascii=False,indent=2));put(target/'configs/topics/reference_taxonomy.json','{}\n')
  p=target/'corpus_pipeline/service.py';put(p,'\n'.join(line for line in p.read_text(encoding='utf-8').splitlines() if '"term method PDF":' not in line)+'\n')
 def verify(root):
  count=0

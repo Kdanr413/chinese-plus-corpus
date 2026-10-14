@@ -148,6 +148,22 @@ def raw_corpus(
     )
 
 
+def require_topic_reference_idle() -> None:
+    if legacy.STATE.snapshot().get("running"):
+        raise ValueError("加工正在运行，请先停止任务再更换参考体系")
+    jobs_path = PROJECT_ROOT / "data/workspaces/chinese-plus/topic-workflow/workflow/jobs.json"
+    if any(row.get("status") in {"running", "queued", "cancelling"} for row in (json.loads(jobs_path.read_text(encoding="utf-8-sig")) if jobs_path.exists() else [])):
+        raise ValueError("话题任务正在运行，请先停止任务再更换参考体系")
+
+
+@router.post("/api/topic-reference/remove", summary="移除当前参考话题体系并保留归档备份")
+def remove_topic_reference(request: Request) -> dict[str, Any]:
+    require_admin(request)
+    require_topic_reference_idle()
+    from scripts.workflow.topic_reference import remove_reference
+    return remove_reference(PROJECT_ROOT)
+
+
 @router.get("/api/uploaded-resources", summary="查看去重后的上传处理资源原件")
 def uploaded_resources(request: Request, category: str = "all") -> dict[str, Any]:
     require_admin(request)
@@ -218,6 +234,8 @@ async def upload(
 ) -> Any:
     try:
         require_admin(request)
+        if category == "topic_taxonomy":
+            require_topic_reference_idle()
         data = await request.body()
         if len(data) > legacy.MAX_UPLOAD_BYTES:
             raise ValueError("单个文件不得超过 512 MB")

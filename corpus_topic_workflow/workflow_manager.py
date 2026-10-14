@@ -1051,10 +1051,30 @@ class WorkflowManager:
         registry["usage"] = usage
         registry.setdefault("rounds", {})[round_id] = list(selected_ids)
         write_json(self.registry_path, registry)
-        baseline = ensure_topic_ids(
-            read_taxonomy(self.canonical_taxonomy)
-            if use_initial_taxonomy else empty_taxonomy("动态话题体系")
-        )
+        # Freeze the selected project reference per round; uploaded references
+        # must not be replaced by a package's domain-specific example.
+        project_config = self.root.parent / "configs/pipeline.json"
+        reference = {}
+        if project_config.is_file() and source_path.is_relative_to(self.root.parent):
+            config = read_json(project_config, {})
+            configured = config.get("topics", {}).get("reference_taxonomy")
+            if configured and use_initial_taxonomy:
+                reference_path = (self.root.parent / configured).resolve()
+                if not reference_path.is_relative_to((self.root.parent / "configs").resolve()):
+                    raise ValueError("参考体系必须位于当前项目 configs 目录")
+                reference = read_json(reference_path, {}) or {}
+            baseline = empty_taxonomy(str(reference.get("taxonomy_name") or "动态话题体系"))
+            write_taxonomy(round_dir / "baseline_taxonomy.json", baseline)
+            if reference:
+                from .run_topic_demo import flatten_taxonomy
+                from .topic_taxonomy_store import initialize_or_merge_taxonomy
+                baseline = initialize_or_merge_taxonomy(round_dir / "baseline_taxonomy.json", flatten_taxonomy(reference), taxonomy_name=baseline["taxonomy_name"])
+            baseline = ensure_topic_ids(baseline)
+        else:
+            baseline = ensure_topic_ids(read_taxonomy(self.canonical_taxonomy) if use_initial_taxonomy else empty_taxonomy("动态话题体系"))
+            if use_initial_taxonomy:
+                reference = read_json(self.root / "configs/new_energy_candidate_taxonomy.json", {}) or {}
+        write_json(round_dir / "reference_taxonomy.json", reference)
         baseline_path = round_dir / "baseline_taxonomy.json"
         write_taxonomy(baseline_path, baseline)
         round_state = {
@@ -1120,7 +1140,9 @@ class WorkflowManager:
         output = round_dir / "clustering"
         output.mkdir(parents=True, exist_ok=True)
         round_state = self.read_round(round_id)
-        taxonomy_path = self.root / "configs" / "new_energy_candidate_taxonomy.json"
+        taxonomy_path = round_dir / "reference_taxonomy.json"
+        if not taxonomy_path.exists():
+            taxonomy_path = self.root / "configs" / "new_energy_candidate_taxonomy.json"
         if not round_state.get("use_initial_taxonomy", True):
             taxonomy_path = round_dir / "empty_reference_taxonomy.json"
             write_json(taxonomy_path, {})
@@ -1910,7 +1932,7 @@ class WorkflowManager:
         command = [
             executable, str(self.root / "run_sentence_validation.py"),
             "--sections", round_state["sample_path"],
-            "--taxonomy", str(self.root / "configs" / "new_energy_candidate_taxonomy.json"),
+            "--taxonomy", str(round_dir / "reference_taxonomy.json" if (round_dir / "reference_taxonomy.json").exists() else self.root / "configs" / "new_energy_candidate_taxonomy.json"),
             "--dynamic-taxonomy", str(dynamic_taxonomy),
             "--term-table", str(self.root / "configs" / "topic_seed_terms.csv"),
             "--config", str(self.root / "configs" / "bertopic.json"), "--output-root", str(output),
