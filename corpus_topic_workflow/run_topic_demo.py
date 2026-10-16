@@ -254,7 +254,10 @@ def read_csv(path: Path) -> list[dict[str, str]]:
 
 def flatten_taxonomy(reference: dict[str, Any]) -> list[dict[str, Any]]:
     if "nodes" in reference:
-        from scripts.workflow.topic_reference import flatten_published_taxonomy
+        if __package__:
+            from .topic_taxonomy_store import flatten_published_taxonomy
+        else:
+            from topic_taxonomy_store import flatten_published_taxonomy
         return flatten_published_taxonomy(reference)
     nodes: list[dict[str, Any]] = []
 
