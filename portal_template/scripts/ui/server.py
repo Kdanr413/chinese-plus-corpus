@@ -537,7 +537,7 @@ def resource_summary(config_path: Path) -> list[dict[str, Any]]:
     taxonomy = read_json(taxonomy_path)
     def count_tree(node: dict[str, Any]) -> int:
         return 1 + sum(count_tree(child) for child in node.get("children", []) if isinstance(child, dict))
-    topic_count = count_tree(taxonomy.get("root", {})) if taxonomy.get("root") else 0
+    topic_count = len(taxonomy["nodes"]) if isinstance(taxonomy.get("nodes"), list) else (count_tree(taxonomy.get("root", {})) if taxonomy.get("root") else 0)
     dimension_count = len(taxonomy.get("cross_cutting_dimensions", []))
     definitions = [
         ("topic_taxonomy", "人工参考话题体系（原件只读）", taxonomy_path, topic_count, f"{topic_count} 个主树节点，{len(taxonomy.get('boundary_candidates', []))} 个边界候选，{dimension_count} 个横向维度"),
@@ -557,7 +557,7 @@ def resource_summary(config_path: Path) -> list[dict[str, Any]]:
             count = sum(bool(row.get("title", "").strip() or row.get("path_or_url", "").strip()) for row in csv_rows)
         template = TEMPLATE_ROOT / TEMPLATE_FILES[key]
         sources = preserved_uploads(key)
-        rows.append({"key": key, "label": label, "path": str(path.relative_to(PROJECT_ROOT)).replace("\\", "/"), "template_path": str(template.relative_to(PROJECT_ROOT)).replace("\\", "/"), "count": count, "description": description, "exists": (bool(taxonomy.get("root")) if key == "topic_taxonomy" else path.exists()), "source_file_count": len(sources), "source_files": [str(source.relative_to(PROJECT_ROOT)).replace("\\", "/") for source in sources[:20]]})
+        rows.append({"key": key, "label": label, "path": str(path.relative_to(PROJECT_ROOT)).replace("\\", "/"), "template_path": str(template.relative_to(PROJECT_ROOT)).replace("\\", "/"), "count": count, "description": description, "exists": (bool(taxonomy.get("root") or taxonomy.get("nodes")) if key == "topic_taxonomy" else path.exists()), "source_file_count": len(sources), "source_files": [str(source.relative_to(PROJECT_ROOT)).replace("\\", "/") for source in sources[:20]]})
     return rows
 
 
@@ -1628,6 +1628,8 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("人工参考话题体系不是有效的 UTF-8 JSON") from exc
             if taxonomy_errors:
                 raise ValueError("；".join(taxonomy_errors))
+            if "nodes" in incoming_taxonomy:
+                incoming_taxonomy.setdefault("classification_object", "完整句子或完整对话话轮")
             if not incoming_taxonomy.get("taxonomy_version") or not incoming_taxonomy.get("classification_object"):
                 raise ValueError("话题体系必须包含 taxonomy_version 和 classification_object")
             backup = target.with_suffix(target.suffix + ".previous")

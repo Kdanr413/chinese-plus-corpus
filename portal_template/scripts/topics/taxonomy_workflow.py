@@ -78,6 +78,12 @@ def sha256(path: Path) -> str:
 
 
 def flatten_reference(reference: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
+    if isinstance(reference, dict) and "nodes" in reference:
+        from scripts.workflow.topic_reference import flatten_published_taxonomy
+        try:
+            return flatten_published_taxonomy(reference), []
+        except ValueError as exc:
+            return [], [str(exc)]
     errors: list[str] = []
     nodes: list[dict[str, Any]] = []
     seen: set[str] = set()

@@ -322,7 +322,7 @@ def initialize_or_merge_taxonomy(
     changed = False
     existing = {normalize_topic_path(row.get("path", "")) for row in state.get("topics", [])}
     for node in nodes:
-        if node.get("node_type") not in {"main_tree", "boundary"}:
+        if node.get("node_type") not in {"root", "main_tree", "boundary"}:
             continue
         normalized = normalize_topic_path(node.get("path", ""))
         if not normalized or normalized in existing:
