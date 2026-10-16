@@ -45,6 +45,8 @@ def create_app(root: Path, *, service=None):
         html = html.replace('保存本次查询结果，或导出当前已发布版本的结构化语料。', '保存本次查询结果。')
         html = html.replace('<a id="exportStructured" class="secondary export" href="#">导出当前版本结构化语料</a>', '<a id="exportStructured" hidden></a>')
         html = html.replace('语料库操作台 - ', '')
+        html = html.replace('<option value="workspace">当前项目已保存标注</option>', '')
+        html = html.replace('id="sourceEditor"', 'id="sourceEditor" hidden')
         return html
     @app.get('/assets/ui-polish.css')
     def css():
@@ -61,11 +63,13 @@ def create_app(root: Path, *, service=None):
         items = service.list_versions(corpus_id)
         return {'corpus_id': corpus_id, 'items': items, 'count': len(items)}
     @app.get('/api/v1/search', response_model=SearchResponse)
-    def search(q: str = Query(min_length=1, max_length=500), corpus_key: str | None = Query(default=None, max_length=128), version: str | None = Query(default=None, max_length=128), limit: int = Query(default=100, ge=1, le=1000)):
-        return service.search(q, corpus_key=corpus_key, version=version, limit=limit)
+    def search(q: str = Query(min_length=1, max_length=500), corpus_key: str | None = Query(default=None, max_length=128), version: str | None = Query(default=None, max_length=128), limit: int = Query(default=100, ge=1, le=1000), source_category: str = Query(default="",max_length=20),book_title: str = Query(default="",max_length=400)):
+        return service.search(q, corpus_key=corpus_key, version=version, limit=limit, **({"source_category":source_category,"book_title":book_title} if source_category or book_title else {}))
     @app.get('/api/v1/kwic', response_model=SearchResponse)
-    def kwic(q: str = Query(min_length=1, max_length=500), corpus_key: str | None = Query(default=None, max_length=128), version: str | None = Query(default=None, max_length=128), limit: int = Query(default=20, ge=1, le=100), page: int = Query(default=0, ge=0, le=100000), window: int = Query(default=50, ge=1, le=200)):
-        return service.kwic(q, corpus_key=corpus_key, version=version, limit=limit, page=page, window=window)
+    def kwic(q: str = Query(min_length=1, max_length=500), corpus_key: str | None = Query(default=None, max_length=128), version: str | None = Query(default=None, max_length=128), limit: int = Query(default=20, ge=1, le=100), page: int = Query(default=0, ge=0, le=100000), window: int = Query(default=50, ge=1, le=200),source_category: str = Query(default="",max_length=20),book_title: str = Query(default="",max_length=400)):
+        return service.kwic(q, corpus_key=corpus_key, version=version, limit=limit, page=page, window=window, **({"source_category":source_category,"book_title":book_title} if source_category or book_title else {}))
+    from corpus_api.knowledge import install_knowledge_routes
+    install_knowledge_routes(app, lambda: service, allow_workspace=False)
     return app
 
 def main():

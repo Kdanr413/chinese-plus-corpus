@@ -256,6 +256,8 @@ class PlatformCoordinator:
             encoding="utf-8",
         )
         selection.manifest_path.unlink()
+        from corpus_api.knowledge_assets import snapshot_knowledge
+        snapshot_knowledge(self.paths.root, workspace.path / "metadata/knowledge", [entry["document_id"] for entry in selection_metadata.get("corpus_files", [])])
 
         workflow = self.config["workflow"]
         search_engine_version = str(workflow["search_engine_version"])

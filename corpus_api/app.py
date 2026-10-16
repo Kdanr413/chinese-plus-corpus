@@ -40,7 +40,7 @@ from .model_errors import router as model_errors_router
 from .topic_workflow import router as topic_workflow_router
 
 
-API_VERSION = "1.6.0"
+API_VERSION = "1.7.0"
 SERVICE_NAME = "chinese-plus-corpus-api"
 WEB_ROOT = Path(__file__).resolve().parent / "web"
 _SEARCH_CACHE = SearchEngineCache()
@@ -217,10 +217,12 @@ def create_app(
         corpus_key: Annotated[str | None, Query(max_length=128)] = None,
         version: Annotated[str | None, Query(max_length=128)] = None,
         limit: Annotated[int, Query(ge=1, le=1000)] = 100,
+        source_category: Annotated[str, Query(max_length=20)] = "",
+        book_title: Annotated[str, Query(max_length=400)] = "",
         service: CorpusService = Depends(dependency),
     ) -> SearchResponse:
         return SearchResponse.model_validate(
-            service.search(q, corpus_key=corpus_key, version=version, limit=limit)
+            service.search(q, corpus_key=corpus_key, version=version, limit=limit, **({"source_category":source_category,"book_title":book_title} if source_category or book_title else {}))
         )
 
     @application.get(
@@ -238,6 +240,8 @@ def create_app(
         limit: Annotated[int, Query(ge=1, le=100)] = 20,
         page: Annotated[int, Query(ge=0)] = 0,
         window: Annotated[int, Query(ge=1, le=200)] = 50,
+        source_category: Annotated[str, Query(max_length=20)] = "",
+        book_title: Annotated[str, Query(max_length=400)] = "",
         service: CorpusService = Depends(dependency),
     ) -> SearchResponse:
         return SearchResponse.model_validate(
@@ -248,8 +252,12 @@ def create_app(
                 limit=limit,
                 page=page,
                 window=window,
+                **({"source_category":source_category,"book_title":book_title} if source_category or book_title else {}),
             )
         )
+
+    from .knowledge import install_knowledge_routes
+    install_knowledge_routes(application, dependency, allow_workspace=True)
 
     application.include_router(workbench_router)
     application.include_router(model_errors_router)

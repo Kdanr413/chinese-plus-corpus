@@ -17,6 +17,8 @@ def rewrite_response(content: bytes, media_type: str, prefix: str, csrf: str='')
         return text.encode('utf-8')
     if 'application/json' in media_type:
         value=json.loads(content)
+        if isinstance(value,dict) and 'openapi' in value and 'paths' in value:
+            value['servers']=[{'url':prefix}]
         def visit(v):
             if isinstance(v,dict): return {k:visit(x) for k,x in v.items()}
             if isinstance(v,list): return [visit(x) for x in v]

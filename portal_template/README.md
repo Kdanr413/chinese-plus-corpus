@@ -81,3 +81,8 @@ python -m corpus_platform serve --setup
 ### 更换或移除参考话题体系
 
 发行包默认使用空的 `configs/topics/reference_taxonomy.json`，不绑定新能源领域。新能源本体仍保留为可选示例。上传其他领域的参考 JSON 后，新建轮次实际使用上传体系，并在轮次目录保存 `reference_taxonomy.json` 快照。点击上传区的“移除当前参考体系”可移除当前构建参考；原文件与配置归档到当前项目的 `data/reference_archive/日期-编号/`，新轮次从空体系开始。历史轮次、已发布版本、原始语料和上传原件不删除。正在加工时先停止任务再更换参考。参考 JSON 使用“参考文件中心/模板/参考话题体系.json”的 root/children 结构和 taxonomy_version、classification_object 字段。
+
+
+### 标注查询、领域统计与来源筛选
+
+检索页增加领域术语频次、正式话题体系和来源筛选。已保存项目标注无需BCC索引即可查看；只读分享限定为所分享的发布版。支持报刊、新闻、论文、教材（精确到书名），未确认来源保留为未分类。新增 annotations、terms、topics、sources API，完整登录、调用、来源登记示例见 [检索与标注API使用说明](docs/检索与标注API使用说明.md)。旧版本缺少范围索引会明确拒绝来源限制，不回退成全库查询。

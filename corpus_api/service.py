@@ -121,6 +121,8 @@ class CorpusService:
         corpus_key: str | None = None,
         version: str | None = None,
         limit: int = 100,
+        source_category: str = "",
+        book_title: str = "",
     ) -> dict[str, object]:
         return self._execute(
             query,
@@ -128,6 +130,7 @@ class CorpusService:
             corpus_key=corpus_key,
             version=version,
             options={"number": limit},
+            source_category=source_category, book_title=book_title,
         )
 
     def kwic(
@@ -139,6 +142,8 @@ class CorpusService:
         limit: int = 20,
         page: int = 0,
         window: int = 50,
+        source_category: str = "",
+        book_title: str = "",
     ) -> dict[str, object]:
         return self._execute(
             query,
@@ -146,6 +151,7 @@ class CorpusService:
             corpus_key=corpus_key,
             version=version,
             options={"number": limit, "page_no": page, "win_size": window},
+            source_category=source_category, book_title=book_title,
         )
 
     def _execute(
@@ -156,12 +162,20 @@ class CorpusService:
         corpus_key: str | None,
         version: str | None,
         options: dict[str, object],
+        source_category: str = "",
+        book_title: str = "",
     ) -> dict[str, object]:
         try:
             corpus, version_row = self._resolve_target(corpus_key, version)
             engine = self._engine(corpus, version_row)
             started = perf_counter()
-            if command == "Context":
+            release_root = self.registry.resolve_release_path(str(corpus["corpus_key"]), str(version_row["version"]))
+            if source_category or book_title:
+                from .source_search import selected_ranges, scoped_query
+                result = scoped_query(engine, query, command, options, selected_ranges(release_root, source_category, book_title))
+                if command == "Context":
+                    self._enrich_context_metadata(result, release_root, cache_key=f"{version_row['id']}:{version_row['checksum_sha256']}")
+            elif command == "Context":
                 result: JSONValue = engine.kwic(query, **options)
                 release_root = self.registry.resolve_release_path(
                     str(corpus["corpus_key"]), str(version_row["version"])
@@ -247,6 +261,11 @@ class CorpusService:
                 row["Global"] = values["Global"]
                 row["Group"] = values["Group"]
                 row["SourceTitle"] = values.get("SourceTitle", "")
+                row["SourceCategory"] = values.get("SourceCategory", "未分类")
+                row["BookTitle"] = values.get("BookTitle", "")
+            row["Terms"] = [part[3:] for part in str(row.get("Group", "")).split(";") if part.startswith("术语=")]
+            global_values = dict(part.split("=", 1) for part in str(row.get("Global", "")).split(";") if "=" in part)
+            row["TopicPaths"] = [global_values["话题"]] if global_values.get("话题") else []
 
     def _release_context_metadata(
         self, release_root: Path, *, cache_key: str
@@ -258,6 +277,8 @@ class CorpusService:
             lookup: dict[str, Any] = {}
             corpus_root = release_root / "corpus"
             titles = {}
+            from .knowledge_assets import KnowledgeAssets
+            source_documents = {d.get("bcc_document_id"):d for d in KnowledgeAssets(release_root).documents().values() if d.get("bcc_document_id")}
             selection = release_root / "metadata" / "selection.json"
             if selection.is_file():
                 try:
@@ -285,7 +306,7 @@ class CorpusService:
                         elif line.startswith("Item:") and document_name:
                             source = document_name + (f";{group_value}" if group_value else "")
                             values = {"Global": global_value, "Group": group_value,
-                                      "SourceTitle": titles.get(document_name, "")}
+                                      "SourceTitle": titles.get(document_name, ""), "SourceCategory": source_documents.get(document_name, {}).get("source_category", "未分类"), "BookTitle": source_documents.get(document_name, {}).get("book_title", "")}
                             lookup.setdefault(source, values)
                             lookup.setdefault(f"@DOC@{document_name}", values)
                             lookup.setdefault(f"@ITEMS@{document_name}", []).append(values)

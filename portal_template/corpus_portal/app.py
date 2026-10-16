@@ -175,7 +175,7 @@ def create_app(settings=None,store=None,supervisor=None,share_loader=None):
         if not re.fullmatch(r'[A-Za-z0-9_-]{40,64}',token): raise HTTPException(404,'分享不存在或已失效')
         record=store.share(token)
         if record is None: raise HTTPException(404,'分享不存在或已失效')
-        if not (path in {'','search','docs','health','assets/ui-polish.css','api/v1/corpora','api/v1/search','api/v1/kwic'} or re.fullmatch(r'api/v1/corpora/[0-9a-f-]{36}/versions',path)):
+        if not (path in {'','search','docs','health','assets/ui-polish.css','api/v1/corpora','api/v1/search','api/v1/kwic','api/v1/annotations','api/v1/terms','api/v1/topics','api/v1/sources'} or re.fullmatch(r'api/v1/corpora/[0-9a-f-]{36}/versions',path)):
             raise HTTPException(404,'分享入口只提供检索')
         cache_key=str(record['id'])
         if cache_key not in shares:
