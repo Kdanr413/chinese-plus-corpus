@@ -124,9 +124,9 @@ def build_syntax_tree_index(ctx):
                         error={"item_id":item_id,"doc_id":str(item.get("doc_id","")),"chunk_index":str(chunk_index),"error":f"{type(exc).__name__}: {exc}","original_text":str(item.get("text",""))}
                         writer.writerow(error);error_file.flush();os.fsync(error_file.fileno());errors.append(error)
                         _append(responses,dict(record,status="error",source="api",words=chunk_words,pos=chunk_pos,error=str(exc)))
-                        progress(context+"；失败已保存，将继续其他条目")
+                        progress(context+f"；失败已保存：{exc}")
                         if consecutive>=failure_limit:
-                            raise RuntimeError(f"句法服务连续失败 {consecutive} 个片段，已停止本步骤，避免长时间空转；已保存回复和缓存。检查服务后重新运行句法步骤，成功片段自动复用，失败片段重新请求。") from exc
+                            raise RuntimeError(f"句法服务连续失败 {consecutive} 个片段，已停止本步骤，避免长时间空转；已保存回复和缓存。检查服务后重新运行句法步骤，成功片段自动复用，失败片段重新请求。最近错误：{exc}") from exc
                 if not failed and trees:
                     tree=trees[0] if len(trees)==1 else "(DIALOGUE "+" ".join(f"(UNIT_{i+1:04d} {value})" for i,value in enumerate(trees))+")"
                     successes+=1
