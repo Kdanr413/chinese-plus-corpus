@@ -1198,9 +1198,8 @@ class RecognitionCoordinator:
                 },
             })
         _write_jsonl(root / "08_approved_resources" / "resources.jsonl", approved)
-        term_meta: dict[str, Mapping[str, Any]] = {}
-        for row in bundle["term_candidates"]:
-            term_meta.setdefault(str(row["normalized_form"]), row)
+        from .term_scores import term_metadata
+        term_meta = term_metadata(bundle["term_candidates"])
         topic_meta = {str(row["topic_name"]): row for row in bundle["topic_candidates"]}
         unique_terms = {str(term).strip() for item in approved for term in item["terms"] if str(term).strip()}
         unique_topics = {str(topic).strip() for item in approved for topic in item["topics"] if str(topic).strip()}

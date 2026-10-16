@@ -1012,6 +1012,9 @@ def download_artifact(run_id: uuid.UUID, kind: str, request: Request) -> FileRes
         raise FileNotFoundError(path)
     if kind == "topic-table":
         path = _topic_table_with_text(path)
+    if kind == "final-terminology":
+        from corpus_recognition.term_scores import terminology_with_scores
+        path = terminology_with_scores(path)
     return FileResponse(path, filename=filename)
 
 
@@ -1044,6 +1047,9 @@ def download_recognition_asset(
         raise FileNotFoundError(path)
     if asset == "topic-table":
         path = _topic_table_with_text(path)
+    if asset == "approved-terms":
+        from corpus_recognition.term_scores import terminology_with_scores
+        path = terminology_with_scores(path)
     return FileResponse(path, filename=filename)
 
 

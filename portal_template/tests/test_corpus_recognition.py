@@ -217,7 +217,7 @@ class RecognitionPostgreSQLTests(unittest.TestCase):
                     run["id"], document["id"], candidate_term_id="term-1",
                     surface_form="劳动合同", normalized_form="劳动合同",
                     start_offset=0, end_offset=4, sentence="签订劳动合同。",
-                    extractor="contract-test", extractor_version="1",
+                    extractor="contract-test", extractor_version="1", score=0.75,
                     evidence={"rule": "noun-pattern"},
                 )
                 batch_term_ids = recognition.add_term_candidates_batch(run["id"], [
@@ -326,9 +326,11 @@ class RecognitionPostgreSQLTests(unittest.TestCase):
                 approved_bundle = recognition.get_approved_resource_bundle(run["id"])
                 self.assertEqual(len(approved_bundle["term_candidates"]), 3)
                 self.assertNotIn("validation_runs", approved_bundle)
+                scored_term = next(row for row in approved_bundle["term_candidates"] if row["candidate_term_id"] == "term-1")
+                self.assertAlmostEqual(float(scored_term["score"]), 0.75)
                 self.assertEqual(
                     set(approved_bundle["term_candidates"][0]),
-                    {"recognition_document_id", "candidate_term_id", "normalized_form"},
+                    {"recognition_document_id", "candidate_term_id", "normalized_form", "score"},
                 )
                 self.assertEqual(recognition.update_run_status(run["id"], "succeeded")["status"], "succeeded")
             finally:

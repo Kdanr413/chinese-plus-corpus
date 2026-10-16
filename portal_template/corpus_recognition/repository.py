@@ -799,7 +799,7 @@ class RecognitionRepository:
                 (run_id,),
             ).fetchall())
             terms = list(connection.execute(
-                """SELECT recognition_document_id, candidate_term_id, normalized_form
+                """SELECT recognition_document_id, candidate_term_id, normalized_form, score
                    FROM term_candidates
                    WHERE recognition_run_id=%s AND status='approved'
                    ORDER BY recognition_document_id, candidate_term_id""",
