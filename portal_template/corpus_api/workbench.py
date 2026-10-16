@@ -23,6 +23,11 @@ _OPERATION_LOG_LOCK = threading.Lock()
 _OPERATION_LOG_PATH = PROJECT_ROOT / "logs" / "runtime" / "platform-operations.log"
 
 STRUCTURED_ARTIFACTS = (
+    ("句法实时进度", "data/processed/index/syntax_tree_progress.json", "当前条目、成功数、失败片段数与更新时间"),
+    ("句法已保存回复", "data/processed/index/syntax_tree_responses.jsonl", "逐片段保存的成功及失败记录；中途即可下载"),
+    ("句法复用缓存", "data/processed/index/syntax_tree_cache.jsonl", "成功片段的断点续跑缓存，请保留"),
+    ("句法失败台账", "data/processed/index/syntax_tree_errors.csv", "历史失败片段；重跑句法步骤会重试失败片段"),
+    ("句法处理中间稿", "data/processed/index/corpus_index_syntax_tree.txt.partial", "本轮已完成条目的中间稿，不能作为正式索引输入"),
     (
         "结构化语料",
         "data/processed/index/corpus_index.txt",
@@ -116,10 +121,7 @@ def bootstrap(request: Request) -> dict[str, Any]:
 @router.get("/api/status", summary="轮询清洗与结构化任务进度")
 def status(request: Request) -> dict[str, Any]:
     require_admin(request)
-    return {
-        "job": legacy.STATE.snapshot(),
-        "summary": legacy.result_summary(legacy.DEFAULT_CONFIG),
-    }
+    return legacy.pipeline_status()
 
 
 @router.get("/api/prompts", summary="读取旧流程兼容提示词配置")

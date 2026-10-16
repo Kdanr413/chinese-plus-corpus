@@ -879,6 +879,11 @@ class JobState:
 STATE = JobState()
 
 
+def pipeline_status() -> dict[str, Any]:
+    """Cheap polling: never scan corpus contents or regenerate review reports."""
+    return {"job": STATE.snapshot(), "syntax": read_json(PROJECT_ROOT / "data/processed/index/syntax_tree_progress.json")}
+
+
 def result_summary(config_path: Path) -> dict[str, Any]:
     config = read_json(config_path)
     version = str(config.get("workflow", {}).get("corpus_version", "unknown"))
@@ -1420,7 +1425,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({"project": config.get("project", {}), "workflow": config.get("workflow", {}), "summary": result_summary(self.config_path), "job": STATE.snapshot()})
             return
         if parsed.path == "/api/status":
-            self.send_json({"job": STATE.snapshot(), "summary": result_summary(self.config_path)})
+            self.send_json(pipeline_status())
             return
         if parsed.path == "/api/prompts":
             self.send_json(load_prompt_config(PROMPT_CONFIG_PATH))

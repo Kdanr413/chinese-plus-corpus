@@ -1,0 +1,20 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const html=fs.readFileSync('corpus_api/web/index.html','utf8');
+const body=html.slice(html.indexOf('async function waitLegacy('),html.indexOf('const PENDING_TOPIC_KEY='));
+(async()=>{
+ let calls=0,logs=0;
+ const context={api:async path=>{assert.equal(path,'/api/status');calls++;if(calls===1)throw new Error('signal is aborted without reason');return {job:{running:calls===2,progress:50,current_step:'句法处理中'}}},logOperation:()=>logs++,stage:()=>{},overall:()=>{},setTimeout:fn=>fn()};
+ vm.createContext(context);vm.runInContext(body,context);await context.waitLegacy('structure',73,88);assert.equal(calls,3);assert.equal(logs,1);
+ context.api=async()=>{throw Object.assign(new Error('login'),{authRequired:true})};await assert.rejects(context.waitLegacy('structure',73,88),/login/);
+ context.api=async()=>({job:{running:false,error:'service failed'}});await assert.rejects(context.waitLegacy('structure',73,88),/service failed/);
+ const recovery=html.slice(html.indexOf('async function restoreRecognitionRun('),html.indexOf('async function restoreLegacyJob('));
+ let restored=0;
+ const stopped={api:async path=>{assert.equal(path,'/api/status');return {job:{running:false},syntax:{status:'interrupted'}}},localStorage:{getItem:()=>null},ACTIVE_RUN_KEY:'run',activeRun:'',overall:()=>{},loadStructuredArtifacts:async()=>restored++};
+ vm.createContext(stopped);vm.runInContext(recovery,stopped);await stopped.restoreRecognitionRun();assert.equal(restored,1);
+ const artifacts=html.slice(html.indexOf('async function loadStructuredArtifacts('),html.indexOf('async function activate('));
+ const box={innerHTML:'',append:button=>box.button=button},publish={disabled:true};let submitted;
+ const buttons={activeRun:'',$:id=>id==='#corpusLinks'?box:publish,esc:String,document:{createElement:()=>({})},api:async(path,options)=>{if(path==='/api/structured-artifacts')return {items:[]};if(path==='/api/status')return {job:{running:false},syntax:{status:'interrupted'}};assert.equal(path,'/api/run');submitted=JSON.parse(options.body);return {}},req:body=>({body:JSON.stringify(body)}),waitLegacy:async()=>{},overall:()=>{},fail:error=>{throw error}};
+ vm.createContext(buttons);vm.runInContext(artifacts,buttons);await buttons.loadStructuredArtifacts();assert.equal(submitted,undefined);await box.button.onclick();assert.deepEqual(submitted.steps,['syntax']);
+ for(const match of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))new vm.Script(match[1]);
+ console.log('PASS: polling retries transient aborts without resubmitting, respects auth/task errors, and page JavaScript parses');
+})().catch(error=>{console.error(error);process.exitCode=1});

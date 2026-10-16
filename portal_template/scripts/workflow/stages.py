@@ -1231,105 +1231,30 @@ def _syntax_chunks(words: list[str], pos: list[str], max_tokens: int) -> list[tu
     return chunks
 
 
-def _request_syntax_tree(url: str, words: list[str], pos: list[str], timeout: float, attempts: int) -> tuple[str, Any]:
+def _request_syntax_tree(url: str, words: list[str], pos: list[str], timeout: float, attempts: int, on_attempt: Callable[[int], None] | None = None) -> tuple[str, Any]:
     body = json.dumps({"words": words, "pos": pos}, ensure_ascii=False).encode("utf-8")
     request = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST")
     last_error: Exception | None = None
     for attempt in range(max(attempts, 1)):
+        if on_attempt:
+            on_attempt(attempt + 1)
         try:
             with urllib.request.urlopen(request, timeout=timeout) as response:
                 payload = json.loads(response.read().decode("utf-8"))
             return _syntax_tree_units(payload), payload
         except Exception as exc:  # network/protocol errors are audited per Item
             last_error = exc
+            if callable(getattr(exc, "close", None)):
+                exc.close()
             if attempt + 1 < max(attempts, 1):
                 time.sleep(min(1.0 * (attempt + 1), 3.0))
     raise RuntimeError(str(last_error) if last_error else "句法服务调用失败")
 
 
 def _build_syntax_tree_index(ctx: WorkflowContext) -> tuple[Path, dict[str, int], list[dict[str, str]]]:
-    output = ctx.configured_path("index_output")
-    items = list(read_jsonl(output / "index_items.jsonl"))
-    syntax_config = ctx.config.get("syntax_tree", {})
-    file_name = ctx.config["index"].get("syntax_tree_file_name", "corpus_index_syntax_tree.txt")
-    syntax_path = output / file_name
-    index_encoding = str(ctx.config["index"].get("encoding", "gb18030")).lower()
-    if index_encoding != "gb18030":
-        raise RuntimeError("句法结构语料编码必须配置为 gb18030，供 LangSC BCC 建索引")
-    token_path = output / "index_item_tokens.jsonl"
-    response_path = output / "syntax_tree_responses.jsonl"
-    error_path = output / "syntax_tree_errors.csv"
-    cache_path = output / "syntax_tree_cache.jsonl"
-    terms, _ = _active_terms(ctx)
-    tokenizer = _create_jieba_tokenizer(terms, ctx.resolve(ctx.config["linguistic"]["jieba_user_dict"]))
-    cache: dict[str, dict[str, Any]] = {}
-    if cache_path.exists():
-        for row in read_jsonl(cache_path):
-            if row.get("cache_key") and row.get("tree"):
-                cache[str(row["cache_key"])] = row
-    base_url = os.environ.get("CORPUS_SYNTAX_TREE_BASE_URL", str(syntax_config.get("base_url", "http://202.112.194.64:5000"))).rstrip("/")
-    endpoint = str(syntax_config.get("endpoint", "/struct_by_tokens"))
-    url = base_url + (endpoint if endpoint.startswith("/") else "/" + endpoint)
-    timeout = float(syntax_config.get("timeout_seconds", 30))
-    attempts = int(syntax_config.get("max_attempts", 3))
-    max_tokens = int(syntax_config.get("max_tokens_per_request", 100))
-    token_rows: list[dict[str, Any]] = []
-    response_rows: list[dict[str, Any]] = []
-    errors: list[dict[str, str]] = []
-    tree_by_item: dict[str, str] = {}
-    cache_hits = 0
-    _emit_progress(2, f"准备句法树处理：0/{len(items)} 条")
-    for item_index, item in enumerate(items, start=1):
-        item_id = str(item["item_id"])
-        words, pos = _segment_text_with_pos(str(item.get("text", "")), tokenizer)
-        chunks = _syntax_chunks(words, pos, max_tokens)
-        token_rows.append({"item_id": item_id, "doc_id": item.get("doc_id", ""), "text": item.get("text", ""), "words": words, "pos": pos, "syntax_chunk_count": len(chunks)})
-        trees: list[str] = []
-        item_failed = False
-        for chunk_index, (chunk_words, chunk_pos) in enumerate(chunks):
-            cache_key = hashlib.sha256(json.dumps({"words": chunk_words, "pos": chunk_pos}, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
-            try:
-                if cache_key in cache:
-                    tree = str(cache[cache_key]["tree"])
-                    payload = cache[cache_key].get("response", {})
-                    cache_hits += 1
-                    source = "cache"
-                else:
-                    tree, payload = _request_syntax_tree(url, chunk_words, chunk_pos, timeout, attempts)
-                    cache[cache_key] = {"cache_key": cache_key, "tree": tree, "response": payload, "created_at": now_iso()}
-                    source = "api"
-                trees.append(tree)
-                response_rows.append({"item_id": item_id, "chunk_index": chunk_index, "chunk_count": len(chunks), "status": "success", "source": source, "endpoint": url, "words": chunk_words, "pos": chunk_pos, "response": payload, "tree": tree})
-            except Exception as exc:
-                item_failed = True
-                errors.append({"item_id": item_id, "doc_id": str(item.get("doc_id", "")), "chunk_index": str(chunk_index), "error": f"{type(exc).__name__}: {exc}", "original_text": str(item.get("text", ""))})
-                response_rows.append({"item_id": item_id, "chunk_index": chunk_index, "chunk_count": len(chunks), "status": "error", "source": "api", "endpoint": url, "words": chunk_words, "pos": chunk_pos, "error": str(exc)})
-        if not item_failed and trees:
-            tree_by_item[item_id] = trees[0] if len(trees) == 1 else "(DIALOGUE " + " ".join(f"(UNIT_{index + 1:04d} {tree})" for index, tree in enumerate(trees)) + ")"
-        if item_index == len(items) or item_index % 250 == 0:
-            _emit_progress(
-                3 + round(item_index / max(len(items), 1) * 82),
-                f"正在生成或复用句法树：{item_index}/{len(items)} 条；缓存命中 {cache_hits}",
-            )
-    write_jsonl(token_path, token_rows)
-    write_jsonl(response_path, response_rows)
-    write_jsonl(cache_path, cache.values())
-    write_csv(error_path, errors, ["item_id", "doc_id", "chunk_index", "error", "original_text"])
-    with syntax_path.open("w", encoding=index_encoding, newline="\n") as handle:
-        current_doc = ""
-        for item in items:
-            if item["doc_id"] != current_doc:
-                handle.write(f"Doc {item['doc_name']}\n")
-                current_doc = str(item["doc_id"])
-            handle.write("#Global " + ";".join(item["global_pairs"]) + "\n")
-            handle.write("#Group" + (" " + ";".join(item["group_pairs"]) if item["group_pairs"] else "") + "\n")
-            # 失败项保留原文，且必须同时出现在错误台账；不伪造句法树。
-            tree = tree_by_item.get(str(item["item_id"]), str(item.get("text", "")))
-            handle.write(f"Item: {_bcc_safe_tree(tree)}\n")
-    return syntax_path, {
-        "syntax_items": len(items), "syntax_successes": len(tree_by_item),
-        "syntax_failures": len(errors), "syntax_cache_hits": cache_hits,
-    }, errors
+    # Streaming checkpointing is shared by CLI and web runs.
+    from .syntax_checkpoint import build_syntax_tree_index
+    return build_syntax_tree_index(ctx)
 
 
 def _version_profile(ctx: WorkflowContext, index_path: Path, index_metrics: Mapping[str, int]) -> tuple[Path, ...]:
