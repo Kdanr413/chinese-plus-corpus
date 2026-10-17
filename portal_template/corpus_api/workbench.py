@@ -233,11 +233,16 @@ async def upload(
     filename: str,
     batch_index: int = 0,
     batch_id: str = "",
+    source_category: str = "未分类",
+    book_title: str = "",
 ) -> Any:
     try:
         require_admin(request)
         if category == "topic_taxonomy":
             require_topic_reference_idle()
+        if category == "corpus":
+            from .source_metadata import validate_source
+            validate_source(source_category,book_title)
         data = await request.body()
         if len(data) > legacy.MAX_UPLOAD_BYTES:
             raise ValueError("单个文件不得超过 512 MB")
@@ -252,6 +257,10 @@ async def upload(
             backup_existing=batch_index == 0,
             merge_existing=batch_index > 0,
         )
+        if result.get("ok") and category == "corpus":
+            from .source_metadata import save_upload_sources
+            save_upload_sources(PROJECT_ROOT,result.get("uploaded_files",[]),source_category,book_title)
+            result["message"] += "；来源：" + source_category + (" · " + book_title if source_category == "教材" else "")
         if result.get("ok") and category in legacy.PRESERVED_UPLOAD_CATEGORIES:
             stored, duplicate = legacy.preserve_uploaded_source(
                 category,

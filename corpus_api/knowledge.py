@@ -1,8 +1,9 @@
 """Read-only linguistic APIs, with an authenticated workspace view."""
 from pathlib import Path
 from typing import Literal
-import csv,json,os,threading
+import csv,json,os,threading,io
 from fastapi import Depends,HTTPException,Query,Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel,Field
 from .knowledge_assets import KnowledgeAssets,SOURCE_CATEGORIES
 
@@ -36,16 +37,29 @@ def install_knowledge_routes(app,dependency,*,allow_workspace=False):
             total+=1
         return {'dataset':dataset,'available':a.annotations.is_file(),'items':items,'total':total,'page':page,'page_size':page_size}
     @app.get('/api/v1/terms',tags=['Corpus Annotations'],summary='查询标注术语的词频和句子频次')
-    def terms(request:Request,dataset:Literal['release','workspace']='release',corpus_key:str|None=Query(default=None,max_length=128),version:str|None=Query(default=None,max_length=128),q:str=Query(default='',max_length=250),source_category:str=Query(default='',max_length=20),book_title:str=Query(default='',max_length=400),page:int=Query(default=1,ge=1,le=100000),page_size:int=Query(default=50,ge=1,le=200),service=Depends(dependency)):
+    def terms(request:Request,dataset:Literal['release','workspace']='release',corpus_key:str|None=Query(default=None,max_length=128),version:str|None=Query(default=None,max_length=128),q:str=Query(default='',max_length=250),source_category:str=Query(default='',max_length=20),book_title:str=Query(default='',max_length=400),page:int=Query(default=1,ge=1,le=100000),page_size:int=Query(default=10,ge=1,le=200),service=Depends(dependency)):
         validate_source(source_category);a=assets(request,service,dataset,corpus_key,version);summary=a.summary(source_category,book_title);items=[r for r in summary['terms'] if not q or q in r['term'] or q==r['term_id']];start=(page-1)*page_size
         return {'dataset':dataset,'available':summary['available'],'sentence_count':summary['sentence_count'],'frequency_definition':summary['frequency_definition'],'items':items[start:start+page_size],'total':len(items),'page':page,'page_size':page_size}
+    @app.get('/api/v1/terms/export',tags=['Corpus Annotations'],summary='下载当前范围的完整术语频次CSV')
+    def export_terms(request:Request,dataset:Literal['release','workspace']='release',corpus_key:str|None=None,version:str|None=None,q:str=Query(default='',max_length=250),source_category:str=Query(default='',max_length=20),book_title:str=Query(default='',max_length=400),service=Depends(dependency)):
+        validate_source(source_category);a=assets(request,service,dataset,corpus_key,version)
+        summary=a.summary(source_category,book_title)
+        def generate():
+            buffer=io.StringIO();writer=csv.writer(buffer)
+            yield '\ufeff'
+            writer.writerow(['term','term_id','frequency','sentence_frequency']);yield buffer.getvalue();buffer.seek(0);buffer.truncate(0)
+            for row in summary['terms']:
+                if q and q not in row['term'] and q!=row['term_id']:continue
+                writer.writerow([row['term'],row['term_id'],row['frequency'],row['sentence_frequency']]);yield buffer.getvalue();buffer.seek(0);buffer.truncate(0)
+        return StreamingResponse(generate(),media_type='text/csv; charset=utf-8',headers={'Content-Disposition':'attachment; filename="term_frequency.csv"'})
     @app.get('/api/v1/topics',tags=['Corpus Annotations'],summary='读取正式话题体系及各话题标注单元数')
     def topics(request:Request,dataset:Literal['release','workspace']='release',corpus_key:str|None=Query(default=None,max_length=128),version:str|None=Query(default=None,max_length=128),source_category:str=Query(default='',max_length=20),book_title:str=Query(default='',max_length=400),service=Depends(dependency)):
         validate_source(source_category);a=assets(request,service,dataset,corpus_key,version);taxonomy=json.loads(a.taxonomy.read_text(encoding='utf-8-sig')) if a.taxonomy.is_file() else {};counts=a.summary(source_category,book_title)['topic_counts']
-        nodes=taxonomy.get('nodes',taxonomy.get('topics',[]));items=[]
+        from .topic_display import TopicDisplay
+        nodes=TopicDisplay(a.root,a.workspace).nodes;items=[]
         for n in nodes:
             item=dict(n);path=str(n.get('path') or n.get('full_path') or n.get('name',''));item['sentence_frequency']=counts.get(path,0);item['subtree_sentence_frequency']=sum(v for p,v in counts.items() if p==path or p.startswith(path+' > '));items.append(item)
-        return {'dataset':dataset,'available':bool(taxonomy),'taxonomy_version':taxonomy.get('taxonomy_version'),'source_round_id':taxonomy.get('source_round_id'),'status':taxonomy.get('status'),'items':items,'total':len(items),'counts_note':'sentence_frequency为该路径直接标注数；subtree_sentence_frequency为自身及后代路径的标签次数之和，多标签可能重复计数'}
+        return {'dataset':dataset,'available':bool(taxonomy),'taxonomy_version':taxonomy.get('taxonomy_version'),'source_round_id':taxonomy.get('source_round_id'),'status':taxonomy.get('status'),'items':items,'total':len(items),'needs_naming':sum(bool(n.get('needs_name')) for n in nodes),'counts_note':'sentence_frequency为该路径直接标注数；subtree_sentence_frequency为自身及后代路径的标签次数之和，多标签可能重复计数'}
     @app.get('/api/v1/sources',tags=['Corpus Annotations'],summary='查询来源类别、具体教材书名与BCC来源对应')
     def sources(request:Request,dataset:Literal['release','workspace']='release',corpus_key:str|None=Query(default=None,max_length=128),version:str|None=Query(default=None,max_length=128),page:int=Query(default=1,ge=1,le=100000),page_size:int=Query(default=100,ge=1,le=1000),service=Depends(dependency)):
         a=assets(request,service,dataset,corpus_key,version);docs=list(a.documents().values());start=(page-1)*page_size
@@ -69,7 +83,6 @@ def install_knowledge_routes(app,dependency,*,allow_workspace=False):
                     import shutil
                     from datetime import datetime
                     backup=PROJECT_ROOT/'data/reference_archive'/('sources-'+datetime.now().strftime('%Y%m%d-%H%M%S-%f'));backup.mkdir(parents=True);shutil.copy2(a.mapping,backup/'sources.csv')
-                with temp.open('w',encoding='utf-8-sig',newline='') as h:
-                    w=csv.DictWriter(h,fieldnames=['document_id','source_category','book_title']);w.writeheader();w.writerows(mapping.values())
-                temp.replace(a.mapping)
+                from .source_metadata import write_csv_atomic
+                write_csv_atomic(a.mapping,['document_id','source_category','book_title'],mapping.values())
             return {'ok':True,'updated':len(payload.items),'message':'已保存项目来源信息；正式版本需在未来发布时冻结，旧版本保持不变'}

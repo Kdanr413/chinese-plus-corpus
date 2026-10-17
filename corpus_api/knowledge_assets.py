@@ -26,6 +26,7 @@ def category(value):
 class KnowledgeAssets:
     def __init__(self,root:Path,workspace=False):
         self.root=root.resolve();self.workspace=workspace
+        self.upload_mapping=self.root/"inputs/metadata/upload_sources.csv"
         base=self.root/'data' if workspace else self.root/'metadata/knowledge'
         self.annotations=base/('curated/annotations/sentence_annotations.jsonl' if workspace else 'sentence_annotations.jsonl')
         self.taxonomy=base/('curated/topics/taxonomy.json' if workspace else 'taxonomy.json')
@@ -34,13 +35,20 @@ class KnowledgeAssets:
         self.mapping=self.root/('inputs/metadata/sources.csv' if workspace else 'metadata/knowledge/sources.csv')
 
     def signature(self):
-        return tuple((str(p),p.stat().st_mtime_ns,p.stat().st_size) if p.is_file() else (str(p),0,0) for p in (self.annotations,self.taxonomy,self.terminology,self.doc_path,self.mapping))
+        return tuple((str(p),p.stat().st_mtime_ns,p.stat().st_size) if p.is_file() else (str(p),0,0) for p in (self.annotations,self.taxonomy,self.terminology,self.doc_path,self.mapping,self.upload_mapping))
 
     def documents(self):
         result={}
+        from .source_metadata import upload_source_map
+        uploaded=upload_source_map(self.root) if self.workspace else {}
         for row in rows(self.doc_path):
             key=str(row.get('doc_id',row.get('document_id','')))
             value={'document_id':key,'title':str(row.get('title','')),'source_category':category(row.get('source_category') or row.get('source_type') or row.get('source')),'book_title':str(row.get('book_title',''))}
+            original=Path(str(row.get("original_path") or ""))
+            original=original.resolve() if original.is_absolute() else (self.root/original).resolve()
+            key_path=original.relative_to(self.root).as_posix() if original.is_relative_to(self.root) else ""
+            if key_path in uploaded:
+                value.update(source_category=category(uploaded[key_path].get("source_category")),book_title=uploaded[key_path].get("book_title", ""))
             # A textbook must have a specific title; never infer one from a filename.
             if value['source_category']=='教材' and not value['book_title']:value['source_category']='未分类'
             result[key]=value
@@ -70,6 +78,8 @@ class KnowledgeAssets:
 
     def iter_annotations(self,source_category='',book_title='',sentence_id='',term='',topic=''):
         docs=self.documents();ids=self.term_ids()
+        from .topic_display import TopicDisplay
+        display=TopicDisplay(self.root,self.workspace)
         topic_nodes=read_json(self.taxonomy).get('nodes',read_json(self.taxonomy).get('topics',[]))
         topic_ids={str(r.get('path') or r.get('full_path') or r.get('name','')):r.get('topic_id',r.get('id','')) for r in topic_nodes}
         for row in rows(self.annotations):
@@ -82,7 +92,7 @@ class KnowledgeAssets:
             topics=list(dict.fromkeys(str(v) for v in row.get('topics',[]) if isinstance(v,str))) or ([row['topic_path']] if row.get('topic_path') else [])
             if term and term not in terms and term not in [ids.get(v) for v in terms]:continue
             if topic and not any(p==topic or p.startswith(topic+' > ') or topic_ids.get(p)==topic for p in topics):continue
-            yield {'sentence_id':sid,'unit_id':row.get('document_id',''),'document_id':doc_id,'text':row.get('clean_text',row.get('text','')),'topics':[{'path':p,'topic_id':topic_ids.get(p,'')} for p in topics],'terms':[{'term':t,'term_id':ids.get(t,'')} for t in terms],'source':doc,'provenance':row.get('provenance',{}),'analysis_unit_type':row.get('analysis_unit_type','sentence'),'annotation_status':row.get('final_decision',''),'mark_origin':'saved_annotations'}
+            yield {'sentence_id':sid,'unit_id':row.get('document_id',''),'document_id':doc_id,'text':row.get('clean_text',row.get('text','')),'topics':[dict(display.resolve(p),path=p,topic_id=topic_ids.get(p,display.resolve(p)['topic_id'])) for p in topics],'terms':[{'term':t,'term_id':ids.get(t,'')} for t in terms],'source':doc,'provenance':row.get('provenance',{}),'analysis_unit_type':row.get('analysis_unit_type','sentence'),'annotation_status':row.get('final_decision',''),'mark_origin':'saved_annotations'}
 
     def summary(self,source_category='',book_title=''):
         with _SUMMARY_LOCK:

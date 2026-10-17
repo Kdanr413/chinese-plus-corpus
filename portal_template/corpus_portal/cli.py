@@ -53,6 +53,7 @@ def main(argv=None):
     a=p.parse_args(argv)
     settings=PortalSettings.environment()
     if a.command=='serve':
+        settings=replace(settings,bind_host=a.host)
         if not 1<=a.port<=65535: p.error('端口必须在 1 至 65535 之间')
         if not os.getenv('PORTAL_PUBLIC_URL'):
             settings=replace(settings,public_url=f'http://127.0.0.1:{a.port}')
@@ -107,7 +108,7 @@ def main(argv=None):
             for _ in range(120):
                 try:
                     with urllib.request.urlopen(f'http://127.0.0.1:{a.port}/health',timeout=.5):
-                        webbrowser.open(f'http://127.0.0.1:{a.port}/')
+                        webbrowser.open(settings.public_url+'/')
                         return
                 except OSError: time.sleep(.25)
         threading.Thread(target=open_when_ready,daemon=True).start()

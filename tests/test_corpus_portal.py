@@ -161,6 +161,17 @@ class PortalTests(unittest.TestCase):
             self.assertEqual(guest.get(base+'/'+path).status_code,404)
             self.assertIn(guest.post(base+'/'+path,json={}).status_code,[404,405])
         self.assertNotIn('语料库构建</a>',guest.get(base+'/search').text)
+    def test_share_openapi_and_network_configuration(self):
+        self.release();share=self.share();base=share['url'].removesuffix('/search')
+        guest=TestClient(self.app)
+        response=guest.get(base+'/openapi.json')
+        self.assertEqual(response.status_code,200)
+        spec=response.json();self.assertEqual(spec['servers'][0]['url'],base.replace(self.settings.public_url,''))
+        self.assertIn('/api/v1/terms/export',spec['paths'])
+        self.assertEqual(guest.post(base+'/api/v1/source-metadata',json={}).status_code,405)
+        self.assertEqual(guest.get('/_portal/api/network-info').status_code,401)
+        self.assertEqual(self.alice.get('/_portal/api/network-info').status_code,200)
+
     def test_revocation_applies_after_cached_search(self):
         self.release();share=self.share();guest=TestClient(self.app)
         self.assertEqual(guest.get(share['url']).status_code,200)

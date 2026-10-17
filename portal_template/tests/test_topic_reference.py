@@ -73,3 +73,25 @@ class TopicReferenceTests(unittest.TestCase):
                [{"id":"a","name":"A","path":"A"},{"id":"a","name":"B","path":"B"}],
                [{"id":"a","name":"A","path":"A","keywords":"wrong"}]):
    self.assertTrue(flatten_reference({"nodes":rows})[1])
+
+ def test_reuse_approved_reference_prepares_classification_without_clustering(self):
+  from corpus_api import topic_workflow as api
+  import hashlib
+  with tempfile.TemporaryDirectory() as temp:
+   root=Path(temp);package=root/"corpus_topic_workflow";shutil.copytree(Path(__file__).resolve().parents[1]/"corpus_topic_workflow/configs",package/"configs")
+   config=root/"configs/pipeline.json";config.parent.mkdir();config.write_text(json.dumps({"topics":{"reference_taxonomy":"configs/topics/reference_taxonomy.json"}}),encoding="utf-8")
+   reference={"taxonomy_name":"正式体系","taxonomy_version":"3","status":"approved","test_only":False,"nodes":[{"id":"one","name":"医学","path":"医学","parent_id":""},{"id":"two","name":"诊断","path":"医学 > 诊断","parent_id":"one"},{"id":"three","name":"影像检查","path":"医学 > 诊断 > 影像检查","parent_id":"two","keywords":["影像检查"]}]}
+   path=root/"configs/topics/reference_taxonomy.json";path.parent.mkdir();path.write_text(json.dumps(reference),encoding="utf-8")
+   source=root/"data/processed/corpus/jsonl/sentences.jsonl";source.parent.mkdir(parents=True);source.write_text("\n".join(json.dumps({"doc_id":"d","sentence_id":str(i),"text":"影像检查是医学诊断的重要方法之一。"}) for i in range(6)),encoding="utf-8")
+   manager=WorkflowManager(package,root/"workflows",root/"canonical.json")
+   active=root/"data/curated/topics/taxonomy.json";active.parent.mkdir(parents=True);active.write_text('{"test_only":true}',encoding="utf-8")
+   profile={"source_unit_count":6,"sample_size":3,"source_sha256":hashlib.sha256(source.read_bytes()).hexdigest()}
+   with patch.object(api,"PROJECT_ROOT",root),patch.object(api,"corpus_data_root",return_value=root/"data"),patch.object(api,"workflow_manager",return_value=manager),patch.object(api,"_source_profile",return_value=profile),patch.object(api,"_paths",return_value=(root/"workflows",root/"canonical.json",active)):
+    result=api.reuse_approved_reference()
+    self.assertTrue(result["ready_for_full_classification"]);self.assertTrue(result["round"]["published"])
+    state=json.loads(active.read_text(encoding="utf-8"));self.assertEqual(state["taxonomy_version"],"3");self.assertFalse(state["test_only"])
+    self.assertIn("影像检查",[node["name"] for node in state["nodes"]])
+    self.assertTrue(list((active.parent/"history").glob('*.json')))
+    self.assertTrue(api.reuse_approved_reference()["reused"])
+    reference["test_only"]=True;path.write_text(json.dumps(reference),encoding="utf-8")
+    with self.assertRaises(ValueError):api.reuse_approved_reference()

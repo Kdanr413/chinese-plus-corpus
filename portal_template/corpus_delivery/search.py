@@ -19,7 +19,7 @@ WEB_ROOT = Path(__file__).resolve().parents[1] / 'corpus_api' / 'web'
 
 def create_app(root: Path, *, service=None):
     service = service or CorpusService(ReleaseCatalog(root), SearchEngineCache(loader=lambda index: IsolatedSearchEngine(index,_SHARED_QUERY_SLOTS)))
-    app = FastAPI(title='语料库只读检索', docs_url=None, redoc_url=None, openapi_url=None)
+    app = FastAPI(title='语料库只读检索', docs_url='/docs', redoc_url=None, openapi_url='/openapi.json')
     @app.exception_handler(Exception)
     async def failure(request, exc):
         # Never disclose server paths or configuration in public responses.

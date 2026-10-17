@@ -234,6 +234,8 @@ class CorpusService:
         if not isinstance(result, dict) or not isinstance(result.get("Context"), list):
             return
         metadata = self._release_context_metadata(release_root, cache_key=cache_key)
+        from .topic_display import TopicDisplay
+        topic_display = TopicDisplay(release_root)
         for row in result["Context"]:
             if not isinstance(row, dict):
                 continue
@@ -266,6 +268,11 @@ class CorpusService:
             row["Terms"] = [part[3:] for part in str(row.get("Group", "")).split(";") if part.startswith("术语=")]
             global_values = dict(part.split("=", 1) for part in str(row.get("Global", "")).split(";") if "=" in part)
             row["TopicPaths"] = [global_values["话题"]] if global_values.get("话题") else []
+            if not row["TopicPaths"]:
+                levels=[global_values.get(key,"") for key in ("一级话题","二级话题","三级话题")]
+                row["TopicPaths"]=[" > ".join(x for x in levels if x)] if any(levels) else []
+            row["Topics"] = [topic_display.resolve(value) for value in row["TopicPaths"]]
+            row["TopicNames"] = [topic["name"] for topic in row["Topics"]]
 
     def _release_context_metadata(
         self, release_root: Path, *, cache_key: str

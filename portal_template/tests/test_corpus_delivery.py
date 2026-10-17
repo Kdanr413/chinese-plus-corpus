@@ -17,9 +17,12 @@ class DeliveryTests(unittest.TestCase):
         page=client.get('/search').text
         self.assertNotIn('语料库构建</a>',page)
         self.assertNotIn('导出当前版本结构化语料</a>',page)
-        for path in ['/api/upload','/api/run','/api/preview','/api/download','/api/bootstrap','/topic-workflow','/openapi.json','/api/v1/exports/structured']:
+        for path in ['/api/upload','/api/run','/api/preview','/api/download','/api/bootstrap','/topic-workflow','/api/v1/exports/structured']:
             for method in ['get','post']:
                 self.assertIn(getattr(client,method)(path).status_code,(404,405))
+        spec=client.get('/openapi.json').json()
+        self.assertTrue(all(set(operations)<= {'get','parameters'} for operations in spec['paths'].values()))
+        self.assertNotIn('/api/v1/source-metadata',spec['paths'])
         error=client.get('/api/v1/search?q=test')
         self.assertEqual(error.status_code,503)
         self.assertNotIn('private server',error.text)

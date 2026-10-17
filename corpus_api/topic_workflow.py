@@ -17,7 +17,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
-from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query, Request
 from fastapi.responses import Response
 
 from corpus_registry.config import corpus_data_root
@@ -227,6 +227,52 @@ def bootstrap() -> dict[str, Any]:
     result.setdefault("execution", {})["python_executable"] = _recommended_python()
     return result
 
+
+def reuse_approved_reference() -> dict[str, Any]:
+    """Import an already approved reference; no clustering or model calls."""
+    from scripts.workflow.topic_reference import flatten_published_taxonomy
+    from corpus_topic_workflow.workflow_manager import public_taxonomy
+    from corpus_topic_workflow.topic_taxonomy_store import write_taxonomy
+    config=json.loads((PROJECT_ROOT/"configs/pipeline.json").read_text(encoding="utf-8-sig"))
+    relative=config.get("topics",{}).get("reference_taxonomy","")
+    path=(PROJECT_ROOT/relative).resolve()
+    if not relative or not path.is_relative_to((PROJECT_ROOT/"configs").resolve()) or not path.is_file():
+        raise ValueError("请先上传平台导出的已批准参考体系")
+    reference=json.loads(path.read_text(encoding="utf-8-sig"))
+    if reference.get("status")!="approved" or reference.get("test_only"):
+        raise ValueError("只能直接复用已批准的正式体系；测试聚类体系需先审核")
+    nodes=flatten_published_taxonomy(reference)
+    source=corpus_data_root()/"processed/corpus/jsonl/sentences.jsonl"
+    profile=_source_profile(source)
+    if not profile["source_unit_count"]:raise ValueError("请先完成语料清洗")
+    manager=workflow_manager()
+    checksum=hashlib.sha256(path.read_bytes()).hexdigest()
+    active_path=_paths()[2]
+    active_metadata=json.loads(active_path.read_text(encoding="utf-8-sig")) if active_path.is_file() else {}
+    for previous in manager.list_rounds():
+        if previous.get("published") and previous.get("reference_sha256")==checksum and previous.get("source_sha256")==profile.get("source_sha256") and active_metadata.get("source_round_id")==previous.get("round_id") and not active_metadata.get("test_only"):
+            return {"round":previous,"ready_for_full_classification":True,"reused":True}
+    created=manager.create_round(source,sample_size=profile["sample_size"],use_initial_taxonomy=True)
+    round_id=created["round_id"];round_dir=manager.round_dir(round_id)
+    state=json.loads((round_dir/"baseline_taxonomy.json").read_text(encoding="utf-8-sig"))
+    state["taxonomy_version"]=int(reference.get("taxonomy_version") or 1)
+    state["taxonomy_name"]=reference.get("taxonomy_name",state.get("taxonomy_name"))
+    if manager.canonical_taxonomy.is_file():
+        shutil.copy2(manager.canonical_taxonomy,manager.snapshots_root/("before_reference_"+round_id+".json"))
+    write_taxonomy(manager.canonical_taxonomy,state)
+    snapshot=manager.snapshots_root/("imported_reference_"+round_id+".json")
+    write_taxonomy(snapshot,state)
+    public=public_taxonomy(state);public.update(source_method="imported_approved_reference",publish_mode="imported_reference",test_only=False)
+    activation=_activate_taxonomy(public,round_id)
+    created.update(status="published",stage=4,published=True,publish_mode="imported_reference",test_only=False,reference_sha256=checksum,source_reference_version=str(reference.get("taxonomy_version")),source_reference_round=reference.get("source_round_id"),published_at=datetime.now().astimezone().isoformat(),published_taxonomy_version=state["taxonomy_version"])
+    manager.write_round(created)
+    return {"round":created,"ready_for_full_classification":True,"platform_activation":activation,"node_count":len(nodes),"message":"已复用正式参考体系；现有标注和发布版本保留。下一步从已发布话题体系继续全量分类。"}
+
+@router.post("/reuse-approved-reference",summary="复用已批准参考体系，直接准备全量分类")
+def reuse_reference(request:Request):
+    from .workbench import require_admin,require_topic_reference_idle
+    require_admin(request);require_topic_reference_idle()
+    return _call(reuse_approved_reference)
 
 @router.post("/prepare-current", summary="按全量语句的三分之一准备话题体系建设轮次")
 def prepare_current(payload: dict[str, Any] = Body(default={})) -> dict[str, Any]:

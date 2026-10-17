@@ -57,3 +57,33 @@ class KnowledgeTests(unittest.TestCase):
     base='A' if opts['scope_ranges'][0]==(0,10) else 'B';rows=[{'Context':base+str(i)} for i in range(3)];n=opts['number'];start=n*opts['page_no'];return {'Total':3,'Context':rows[start:start+n]}
   engine=Engine();ranges=[(0,10),(10,20)];self.assertEqual(scoped_query(engine,'q','Freq',{'number':1},ranges)['Freq']['词'],5)
   r=scoped_query(engine,'q','Context',{'number':2,'page_no':1},ranges);self.assertEqual(r['Total'],6);self.assertEqual([x['Context'] for x in r['Context']],['A2','B0'])
+
+ def test_top_ten_and_full_export_with_filters(self):
+  self.assets.annotations.write_text(json.dumps({'document_id':'u','source_document_id':'d1','clean_text':' '.join('术语'+str(i) for i in range(15)),'terms':['术语'+str(i) for i in range(15)],'topics':['技术 > 储能 > 电池']}),encoding='utf-8')
+  with patch('corpus_api.knowledge.PROJECT_ROOT',self.root),patch.dict('os.environ',{'ADMIN_API_TOKEN':'test-only'}):
+   client=TestClient(create_app(lambda:object()));h={'x-admin-token':'test-only'}
+   result=client.get('/api/v1/terms?dataset=workspace',headers=h).json();self.assertEqual(result['page_size'],10);self.assertEqual(len(result['items']),10);self.assertEqual(result['total'],15)
+   response=client.get('/api/v1/terms/export?dataset=workspace&source_category=教材',headers=h)
+   rows=list(csv.DictReader(__import__('io').StringIO(response.content.decode('utf-8-sig'))));self.assertEqual(len(rows),15)
+   self.assertEqual(client.get('/api/v1/terms/export?dataset=workspace').status_code,403)
+
+ def test_topic_names_do_not_use_keyword_lists(self):
+  from corpus_api.topic_display import TopicDisplay
+  self.assets.taxonomy.write_text(json.dumps({'nodes':[{'id':'test','name':'BT_TOPIC_021｜电池、储能','path':'BERTopic测试体系 > 聚类结果 > BT_TOPIC_021｜电池、储能','keywords':['电池','储能']},{'id':'formal','name':'动力电池','path':'技术 > 储能 > 动力电池','keywords':['锂离子电池']}]}),encoding='utf-8')
+  display=TopicDisplay(self.root,True)
+  self.assertEqual(display.resolve('电池、储能')['name'],'待命名聚类 BT_TOPIC_021')
+  self.assertEqual(display.resolve('技术 > 储能 > 动力电池')['name'],'动力电池')
+  self.assertEqual(display.nodes[0]['keywords'],['电池','储能'])
+
+ def test_upload_sources_inherit_and_snapshot_without_mutating_old_release(self):
+  from corpus_api.source_metadata import save_upload_sources,validate_source
+  docs=[{'doc_id':'d1','title':'课本','original_path':str(self.root/'data/raw/manual/a.txt')}]
+  self.assets.doc_path.write_text(json.dumps(docs[0]),encoding='utf-8')
+  with self.assertRaises(ValueError):validate_source('教材','')
+  with self.assertRaises(ValueError):save_upload_sources(self.root,['../other.txt'],'论文','')
+  save_upload_sources(self.root,['data/raw/manual/a.txt'],'教材','课本第一册')
+  self.assertEqual(self.assets.documents()['d1']['book_title'],'课本第一册')
+  snapshot_knowledge(self.root,self.release/'metadata/knowledge',['d1'])
+  save_upload_sources(self.root,['data/raw/manual/a.txt'],'论文','')
+  self.assertEqual(KnowledgeAssets(self.release).documents()['d1']['source_category'],'教材')
+  self.assertEqual(self.assets.documents()['d1']['source_category'],'论文')

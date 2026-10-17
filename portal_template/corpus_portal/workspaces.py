@@ -29,6 +29,7 @@ class PortalSettings:
     max_workers: int=4
     max_body: int=64*1024*1024
     project_quota: int=10*1024*1024*1024
+    bind_host: str="127.0.0.1"
     @classmethod
     def environment(cls):
         def path(key,default):
@@ -38,7 +39,7 @@ class PortalSettings:
         parsed=urlsplit(url)
         if parsed.scheme not in {'http','https'} or not parsed.netloc or parsed.path:
             raise ValueError('PORTAL_PUBLIC_URL must be a site origin without a path')
-        return cls(path('PORTAL_STORAGE','data/portal'),path('PORTAL_TEMPLATE','portal_template'),url,int(os.getenv('PORTAL_MAX_WORKERS','4')))
+        return cls(path('PORTAL_STORAGE','data/portal'),path('PORTAL_TEMPLATE','portal_template'),url,int(os.getenv('PORTAL_MAX_WORKERS','4')),bind_host=os.getenv('API_HOST','127.0.0.1'))
     def project_root(self, pid):
         pid=uuid.UUID(str(pid)).hex
         root=(self.storage/'projects'/pid).resolve()

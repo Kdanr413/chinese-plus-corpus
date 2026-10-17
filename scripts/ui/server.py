@@ -1594,6 +1594,7 @@ class Handler(BaseHTTPRequestHandler):
             if suffix == ".zip":
                 target.write_bytes(data)
                 extracted = 0
+                uploaded_files = []
                 with zipfile.ZipFile(target) as archive:
                     total_uncompressed = 0
                     for member in archive.infolist():
@@ -1610,10 +1611,11 @@ class Handler(BaseHTTPRequestHandler):
                         with archive.open(member) as source, destination.open("wb") as output:
                             output.write(source.read())
                         extracted += 1
+                        uploaded_files.append(destination.relative_to(PROJECT_ROOT).as_posix())
                 target.unlink()
-                return {"ok": True, "category": category, "filename": filename, "message": f"已安全解压 {extracted} 个 TXT 文件"}
+                return {"ok": True, "category": category, "filename": filename, "message": f"已安全解压 {extracted} 个 TXT 文件", "uploaded_files": uploaded_files}
             target.write_bytes(data)
-            return {"ok": True, "category": category, "filename": str(relative), "message": "语料已加入待处理区"}
+            return {"ok": True, "category": category, "filename": str(relative), "message": "语料已加入待处理区", "uploaded_files": [target.relative_to(PROJECT_ROOT).as_posix()]}
         if category not in UPLOAD_TARGETS:
             raise ValueError("未知上传类型")
         target = UPLOAD_TARGETS[category]

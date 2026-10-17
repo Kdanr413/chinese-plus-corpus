@@ -110,6 +110,15 @@ def create_app(settings=None,store=None,supervisor=None,share_loader=None):
             if fresh and project_root.is_relative_to(settings.storage.resolve()) and project_root.exists(): shutil.rmtree(project_root)
             raise HTTPException(409,str(exc)) from exc
         return {'id':str(pid),'name':name,'workbench_url':f'/p/{pid}/'}
+    @app.get('/_portal/api/network-info')
+    def network_info(request:Request):
+        user(request)
+        import socket
+        from urllib.parse import urlsplit
+        host=urlsplit(settings.public_url).hostname or ''
+        try:addresses=sorted({row[4][0] for row in socket.getaddrinfo(socket.gethostname(),None,socket.AF_INET) if not row[4][0].startswith(('127.','169.254.'))})
+        except OSError:addresses=[]
+        return {'public_url':settings.public_url,'loopback_url':host in {'localhost','127.0.0.1','::1'},'listen_host':settings.bind_host,'lan_addresses':addresses,'note':'127.0.0.1只能本机访问。跨电脑需配置API_HOST与PORTAL_PUBLIC_URL，并检查防火墙/服务器入口；本接口不保证远程可达。'}
     @app.get('/_portal/api/projects/{pid}/versions')
     def versions(pid:uuid.UUID,request:Request):
         owned(request,pid)
@@ -175,7 +184,7 @@ def create_app(settings=None,store=None,supervisor=None,share_loader=None):
         if not re.fullmatch(r'[A-Za-z0-9_-]{40,64}',token): raise HTTPException(404,'分享不存在或已失效')
         record=store.share(token)
         if record is None: raise HTTPException(404,'分享不存在或已失效')
-        if not (path in {'','search','docs','health','assets/ui-polish.css','api/v1/corpora','api/v1/search','api/v1/kwic','api/v1/annotations','api/v1/terms','api/v1/topics','api/v1/sources'} or re.fullmatch(r'api/v1/corpora/[0-9a-f-]{36}/versions',path)):
+        if not (path in {'','search','docs','openapi.json','health','assets/ui-polish.css','api/v1/corpora','api/v1/search','api/v1/kwic','api/v1/annotations','api/v1/terms','api/v1/terms/export','api/v1/topics','api/v1/sources'} or re.fullmatch(r'api/v1/corpora/[0-9a-f-]{36}/versions',path)):
             raise HTTPException(404,'分享入口只提供检索')
         cache_key=str(record['id'])
         if cache_key not in shares:

@@ -114,3 +114,10 @@ print(r.json())
 - 409/503：版本不可检索、索引或服务不可用。
 
 主服务的 /docs 提供接口手册，/api-reference 是交互式API入口；脚本调用优先使用本说明中的完整项目地址。
+
+
+## 术语前十、名称字段与跨电脑分享
+
+`GET /api/v1/terms` 默认 `page_size=10`，仍可显式分页读取；`GET /api/v1/terms/export` 下载当前来源、书名及术语筛选范围的全部词频 CSV。两个接口使用同一统计口径。网页显示话题名称，KWIC 新增 `Topics`（含稳定ID、原路径、名称和待命名状态）与 `TopicNames`；原 `TopicPaths` 保留用于追溯，测试聚类不会伪装成正式领域名称。`GET /api/v1/topics` 提供体系节点的名称、定义、关键词和计数。
+
+分享访问者将上述路径加到 `/share/SHARE_TOKEN` 后；`/docs` 和 `/openapi.json` 均只包含只读检索接口。不得请求工作区或来源写入接口。跨电脑监听与公开URL配置、请求示例见 [跨电脑共享与只读API](跨电脑共享与只读API.md)。
