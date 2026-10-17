@@ -20,6 +20,7 @@ from .isolated_search import IsolatedSearchEngine
 from .store import PortalStore, normalized_project_name, project_name_key
 from .supervisor import WorkerSupervisor
 from .workspaces import PortalSettings, initialize_workspace
+from .storage import UPLOAD_PATHS, quota_error
 from .security import origin_matches
 from .rewrite import rewrite_response
 
@@ -164,9 +165,9 @@ def create_app(settings=None,store=None,supervisor=None,share_loader=None):
         u,_=owned(request,pid)
         if any(part in {'.','..'} for part in path.split('/')): raise HTTPException(400,'路径无效')
         content=await body(request)
-        if path.startswith('api/upload') or path in {'api/workflow/upload','api/topic-workflow/upload'}:
-            used=sum(p.stat().st_size for p in settings.project_root(pid).rglob('*') if p.is_file())
-            if used+len(content)>settings.project_quota: raise HTTPException(413,'项目存储额度不足')
+        if request.method=='POST' and path.rstrip('/') in UPLOAD_PATHS:
+            error=await asyncio.to_thread(quota_error,settings.project_root(pid),len(content),settings.project_quota)
+            if error: raise HTTPException(413,error)
         try: worker=await asyncio.to_thread(supervisor.ensure,pid)
         except ValueError as exc: raise HTTPException(503,str(exc)) from exc
         headers={'x-corpus-internal':worker.token,'x-admin-token':worker.token}

@@ -2,6 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import json
+import math
 import os
 import re
 import shutil
@@ -39,7 +40,10 @@ class PortalSettings:
         parsed=urlsplit(url)
         if parsed.scheme not in {'http','https'} or not parsed.netloc or parsed.path:
             raise ValueError('PORTAL_PUBLIC_URL must be a site origin without a path')
-        return cls(path('PORTAL_STORAGE','data/portal'),path('PORTAL_TEMPLATE','portal_template'),url,int(os.getenv('PORTAL_MAX_WORKERS','4')),bind_host=os.getenv('API_HOST','127.0.0.1'))
+        quota_gib=float(os.getenv('PORTAL_PROJECT_QUOTA_GB','10'))
+        if not math.isfinite(quota_gib) or quota_gib<=0:
+            raise ValueError('PORTAL_PROJECT_QUOTA_GB must be a finite positive GiB value')
+        return cls(path('PORTAL_STORAGE','data/portal'),path('PORTAL_TEMPLATE','portal_template'),url,int(os.getenv('PORTAL_MAX_WORKERS','4')),project_quota=int(quota_gib*1024**3),bind_host=os.getenv('API_HOST','127.0.0.1'))
     def project_root(self, pid):
         pid=uuid.UUID(str(pid)).hex
         root=(self.storage/'projects'/pid).resolve()

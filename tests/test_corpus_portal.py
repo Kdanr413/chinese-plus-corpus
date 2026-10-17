@@ -108,6 +108,28 @@ class PortalTests(unittest.TestCase):
         self.assertEqual(self.alice.get('/_portal/api/me').status_code,200)
         self.assertEqual(self.alice.post('/_portal/api/logout',json={},headers={'x-csrf-token':response.json()['csrf_token']}).status_code,200)
         self.assertEqual(self.alice.get('/_portal/api/me').status_code,401)
+    def test_upload_quota_blocks_only_actual_post_uploads(self):
+        from types import SimpleNamespace
+        import httpx
+        self.settings.project_quota=1
+        root=self.settings.project_root(self.pid)
+        (root/'occupied.dat').write_bytes(b'exceeds quota')
+        response=self.alice.post(f'/p/{self.pid}/api/upload?category=corpus&filename=a.txt',content=b'new',headers=self.a)
+        self.assertEqual(response.status_code,413,response.text)
+        self.assertIn('PORTAL_PROJECT_QUOTA_GB',response.text)
+        self.assertEqual(self.supervisor.calls,0)
+        upstream=MagicMock();upstream.request=AsyncMock(return_value=httpx.Response(200,json={'ok':True}))
+        with patch.object(self.supervisor,'ensure',return_value=SimpleNamespace(port=9000,token='test-internal-token')),patch('corpus_portal.app.httpx.AsyncClient') as factory,patch('corpus_portal.app.quota_error',side_effect=AssertionError('read-only request counted')):
+            factory.return_value.__aenter__.return_value=upstream
+            for path in ['api/uploaded-resources?category=topic_taxonomy','api/upload','api/status']:
+                response=self.alice.get(f'/p/{self.pid}/'+path)
+                self.assertEqual(response.status_code,200,response.text)
+        self.settings.project_quota=1024**3
+        with patch.object(self.supervisor,'ensure',return_value=SimpleNamespace(port=9000,token='test-internal-token')),patch('corpus_portal.app.httpx.AsyncClient') as factory:
+            factory.return_value.__aenter__.return_value=upstream
+            response=self.alice.post(f'/p/{self.pid}/api/upload',content=b'new',headers=self.a)
+            self.assertEqual(response.status_code,200,response.text)
+
     def test_project_proxy_timeout_reports_uncertain_task_status(self):
         import httpx
         from types import SimpleNamespace
@@ -270,3 +292,21 @@ class PortalTests(unittest.TestCase):
                     with connect(setting):pass
 
 if __name__=='__main__':unittest.main()
+
+
+class StorageConfigurationTests(unittest.TestCase):
+    def test_environment_accepts_configured_quota_and_rejects_invalid_values(self):
+        with patch.dict('os.environ',{'PORTAL_PROJECT_QUOTA_GB':'100'}):
+            self.assertEqual(PortalSettings.environment().project_quota,100*1024**3)
+        for value in ['0','-1','NaN','inf','invalid']:
+            with self.subTest(value=value),patch.dict('os.environ',{'PORTAL_PROJECT_QUOTA_GB':value}):
+                with self.assertRaises(ValueError):PortalSettings.environment()
+
+    def test_storage_counts_nested_files_and_reports_limit_without_deleting(self):
+        from corpus_portal.storage import project_usage,quota_error
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);(root/'nested').mkdir();(root/'nested/results.txt').write_bytes(b'12345')
+            self.assertEqual(project_usage(root,100),5)
+            self.assertEqual(quota_error(root,3,8),'')
+            self.assertIn('项目存储额度不足',quota_error(root,4,8))
+            self.assertEqual((root/'nested/results.txt').read_bytes(),b'12345')
