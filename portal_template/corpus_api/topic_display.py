@@ -9,8 +9,8 @@ class TopicDisplay:
   self.nodes=[];self.aliases={}
   for original in self.taxonomy.get("nodes",self.taxonomy.get("topics",[])):
    row=dict(original);tid=str(row.get("topic_id") or row.get("id") or "");path=str(row.get("path") or row.get("full_path") or row.get("name") or "")
-   raw=str(row.get("name") or path.split(" > ")[-1]);match=re.match(r"^(BT_TOPIC_\d+)\s*[｜|]",raw)
-   name="待命名聚类 "+match[1] if match else raw
+   raw=str(row.get("name") or path.split(" > ")[-1]);match=re.match(r"^(BT_TOPIC_\d+)\s*[｜|]",raw) or re.search(r"待确认聚类 (BT_TOPIC_\d+)",raw)
+   name="待命名聚类 "+match[1] if match and not raw.startswith("待确认聚类 ") else raw
    row.update(topic_id=tid,original_name=raw,display_name=name,name=name,path=path,needs_name=bool(match))
    self.nodes.append(row)
    for alias in {tid,path,raw,path.split(" > ")[-1],re.sub(r"^BT_TOPIC_\d+\s*[｜|]\s*","",raw)}:

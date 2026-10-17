@@ -242,7 +242,7 @@ async def upload(
             require_topic_reference_idle()
         if category == "corpus":
             from .source_metadata import validate_source
-            validate_source(source_category,book_title)
+            validate_source(source_category,book_title,require_book=False)
         data = await request.body()
         if len(data) > legacy.MAX_UPLOAD_BYTES:
             raise ValueError("单个文件不得超过 512 MB")
@@ -260,7 +260,7 @@ async def upload(
         if result.get("ok") and category == "corpus":
             from .source_metadata import save_upload_sources
             save_upload_sources(PROJECT_ROOT,result.get("uploaded_files",[]),source_category,book_title)
-            result["message"] += "；来源：" + source_category + (" · " + book_title if source_category == "教材" else "")
+            result["message"] += "；来源：" + source_category + ("（书名按每个TXT文件名登记）" if source_category == "教材" and not book_title else " · "+book_title if source_category == "教材" else "")
         if result.get("ok") and category in legacy.PRESERVED_UPLOAD_CATEGORIES:
             stored, duplicate = legacy.preserve_uploaded_source(
                 category,

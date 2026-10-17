@@ -185,7 +185,7 @@ class TopicWorkflowIntegrationTests(unittest.TestCase):
         self.assertIn("/api/workflow/rounds", workbench)
         self.assertIn("人工", workbench)
         self.assertIn("模型", workbench)
-        self.assertIn("跳过模型匹配并发布测试体系", workbench)
+        self.assertIn("按参考体系命名并发布草案（无外部大模型）", workbench)
         self.assertIn("force_new:true", main)
         self.assertIn("openTopicWorkflowRound(roundId,true)", main)
         self.assertIn("find(item=>item.round_id===pendingTopicRoundId)", main)
@@ -281,6 +281,15 @@ class TopicWorkflowIntegrationTests(unittest.TestCase):
                 "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in tasks),
                 encoding="utf-8",
             )
+            # A frozen reference with one named leaf: one match and one new pending cluster.
+            reference={"nodes":[
+                {"id":"tech","name":"技术","path":"技术","parent_id":"","keywords":[]},
+                {"id":"storage","name":"储能","path":"技术 > 储能","parent_id":"tech","keywords":[]},
+                {"id":"battery","name":"动力电池","path":"技术 > 储能 > 动力电池","parent_id":"storage","keywords":["荷电状态"],"definition":"车用电池技术"},
+            ]}
+            frozen=round_dir/"reference_taxonomy.json"
+            frozen.write_text(json.dumps(reference,ensure_ascii=False),encoding="utf-8")
+            reference_before=frozen.read_bytes()
             round_state = manager.read_round(created["round_id"])
             round_state.update(status="clustered", stage=2, cluster_count=3)
             manager.write_round(round_state)
@@ -291,9 +300,18 @@ class TopicWorkflowIntegrationTests(unittest.TestCase):
             self.assertTrue(result["taxonomy"]["test_only"])
             leaf_paths = [row["path"] for row in result["taxonomy"]["topics"] if row["level"] == 3]
             self.assertEqual(len(leaf_paths), 2)
-            self.assertTrue(any("BT_TOPIC_001" in path and "动力电池" in path for path in leaf_paths))
+            self.assertTrue(all("｜" not in path for path in leaf_paths))
+            self.assertEqual(sum(result["reference_matching_summary"][k] for k in ("reference_matched_clusters","pending_clusters")),2)
             self.assertFalse(any("BT_OUTLIER" in path for path in leaf_paths))
             self.assertEqual(canonical.read_bytes(), canonical_before)
+            self.assertEqual(frozen.read_bytes(),reference_before)
+            self.assertIn("技术 > 储能 > 动力电池",leaf_paths)
+            named=next(row for row in result["taxonomy"]["topics"] if row["path"]=="技术 > 储能 > 动力电池")
+            self.assertEqual(named["topic_id"],"battery")
+            self.assertIn("荷电状态",named["keywords"])
+            self.assertEqual(result["reference_matching_summary"]["reference_matched_clusters"],1)
+            self.assertEqual(result["reference_matching_summary"]["pending_clusters"],1)
+            self.assertEqual(result["taxonomy"]["taxonomy_version"],json.loads(canonical_before)["taxonomy_version"]+1)
             self.assertEqual(manager.read_round(created["round_id"])["status"], "published_test")
             published = json.loads((round_dir / "published_changes.json").read_text(encoding="utf-8"))
             self.assertEqual(published["publish_mode"], "bertopic_test")

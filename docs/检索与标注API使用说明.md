@@ -121,3 +121,7 @@ print(r.json())
 `GET /api/v1/terms` 默认 `page_size=10`，仍可显式分页读取；`GET /api/v1/terms/export` 下载当前来源、书名及术语筛选范围的全部词频 CSV。两个接口使用同一统计口径。网页显示话题名称，KWIC 新增 `Topics`（含稳定ID、原路径、名称和待命名状态）与 `TopicNames`；原 `TopicPaths` 保留用于追溯，测试聚类不会伪装成正式领域名称。`GET /api/v1/topics` 提供体系节点的名称、定义、关键词和计数。
 
 分享访问者将上述路径加到 `/share/SHARE_TOKEN` 后；`/docs` 和 `/openapi.json` 均只包含只读检索接口。不得请求工作区或来源写入接口。跨电脑监听与公开URL配置、请求示例见 [跨电脑共享与只读API](跨电脑共享与只读API.md)。
+
+### 上传时按批登记来源
+
+基础语料卡片先选本批类别，再选择 TXT/ZIP 并点击“上传本批语料”。不同类别分批上传。教材书名自动取每个 TXT 文件名（不含扩展名），ZIP 内也逐个 TXT 登记。上传 API `/api/upload?category=corpus&filename=教材甲.txt&source_category=教材` 可省略 `book_title`，服务端按文件名登记；显式传入 `book_title` 时仍作为该次上传的书名覆盖值。已有文档的来源修改接口仍须提供具体书名。来源表保存在当前项目 `inputs/metadata/upload_sources.csv`，原文不改写，旧发布版不变。

@@ -246,6 +246,7 @@ def public_taxonomy(state: dict[str, Any]) -> dict[str, Any]:
         "publish_mode": str(state.get("publish_mode") or "reviewed"),
         "test_only": bool(state.get("test_only", False)),
         "source_method": str(state.get("source_method") or "model_and_human_review"),
+        "reference_matching_summary": copy.deepcopy(state.get("reference_matching_summary", {})),
     }
 
 
@@ -1790,7 +1791,7 @@ class WorkflowManager:
         return {"round": round_state, "taxonomy": public_taxonomy(state), "snapshot": str(snapshot)}
 
     def publish_bertopic_test(self, round_id: str) -> dict[str, Any]:
-        """Publish raw BERTopic clusters as an isolated, clearly marked test taxonomy."""
+        """Publish reference-matched cluster names as an isolated, unreviewed draft."""
         round_state = self.read_round(round_id)
         tasks = [
             row for row in self.cluster_tasks(round_id)
@@ -1800,26 +1801,19 @@ class WorkflowManager:
             raise ValueError("测试直发只允许在聚类完成且没有运行中模型任务时使用，并且必须存在非离群聚类")
 
         canonical_version = int(read_taxonomy(self.canonical_taxonomy).get("taxonomy_version", 1))
-        state = empty_taxonomy("BERTopic 聚类测试体系")
+        from .run_topic_demo import flatten_taxonomy
+        from .reference_matching import match_cluster_reference
+        reference=read_json(self.round_dir(round_id)/"reference_taxonomy.json",{}) or {}
+        reference_nodes=flatten_taxonomy(reference) if reference else []
+        baseline_path=self.round_dir(round_id)/"baseline_taxonomy.json"
+        state=read_taxonomy(baseline_path) if reference_nodes and baseline_path.is_file() else empty_taxonomy("BERTopic 聚类参考匹配草案")
         state.update({
-            "taxonomy_version": canonical_version + 1,
-            "publish_mode": "bertopic_test",
-            "test_only": True,
-            "source_method": "bertopic_clusters_without_model_matching",
-            "source_round_id": round_id,
+            "taxonomy_version":canonical_version+1,"publish_mode":"bertopic_test","test_only":True,
+            "source_method":"bertopic_reference_matching_without_external_llm","source_round_id":round_id,
         })
+        threshold=float(load_bertopic_config(self.root/"configs/bertopic.json")["matching"]["cluster_match_threshold"])
+        matched_count=0;pending_count=0
         actor = f"bertopic_test_publish:{round_id}"
-        state["topics"].extend([
-            topic_record(
-                "BERTopic测试体系", source="bertopic_test_publish", created_by=actor,
-                definition="仅用于快速验证流程的 BERTopic 聚类测试体系，不代表正式领域分类。",
-            ),
-            topic_record(
-                "BERTopic测试体系 > 聚类结果", source="bertopic_test_publish", created_by=actor,
-                definition="未经模型匹配和人工裁决的 BERTopic 聚类结果。",
-            ),
-        ])
-
         applied: list[dict[str, Any]] = []
         for task in tasks:
             cluster_id = str(task.get("cluster_id", "")).strip()
@@ -1831,31 +1825,34 @@ class WorkflowManager:
             ]
             keywords = [word.replace(">", " ").replace("/", " ").strip() for word in keywords if word]
             keywords = list(dict.fromkeys(word for word in keywords if word))[:12]
-            label_words = "、".join(keywords[:4]) or "无代表词"
-            leaf_name = f"{cluster_id}｜{label_words}"
-            path = f"BERTopic测试体系 > 聚类结果 > {leaf_name}"
-            definition = (
-                f"BERTopic 测试聚类 {cluster_id}，包含 {int(task.get('unit_count', 0))} 个抽样单元；"
-                f"代表词：{'、'.join(keywords) or '无'}。未经模型匹配和人工裁决。"
-            )
-            state["topics"].append(topic_record(
-                path, source="bertopic_test_publish", created_by=actor,
-                definition=definition, keywords=keywords,
-            ))
-            levels = split_topic_path(path)
-            result = {
-                "decision": "KEEP",
-                "topic_assignments": [{
-                    "level_1_topic": levels[0], "level_2_topic": levels[1],
-                    "level_3_topic": levels[2], "full_path": path,
-                }],
-                "final_topic_paths": [path],
-                "scope_status": "IN_SCOPE", "cluster_quality": "COHERENT",
-                "suggested_external_domain": "", "follow_up_action": "NONE",
-                "changes": [],
-                "rationale": "BERTopic 测试直发：跳过模型匹配和人工裁决。",
-                "confidence": 0.0, "needs_human_review": False,
-                "test_only": True,
+            matches=match_cluster_reference(task,reference_nodes,threshold)
+            if matches:
+                paths=[match["path"] for match in matches]
+                for match in matches:
+                    node=next(n for n in reference_nodes if n["path"]==match["path"])
+                    add_topic_path(state,match["path"],source="reference_machine_match",created_by=actor,
+                        definition=node.get("definition",""),keywords=node.get("keywords",[]))
+                    next(row for row in state["topics"] if row["path"]==match["path"])["topic_id"]=str(node["id"])
+                matched_count+=1
+            else:
+                pending_count+=1
+                path=f"待确认话题 > 未匹配聚类 > 待确认聚类 {cluster_id}"
+                paths=[path]
+                add_topic_path(state,path,source="bertopic_test_publish",created_by=actor,
+                    definition=f"聚类 {cluster_id} 未可靠匹配参考体系，需人工确认。",keywords=keywords)
+            assignments=[]
+            for path in paths:
+                levels=split_topic_path(path)
+                assignments.append({"level_1_topic":levels[0],"level_2_topic":levels[1],"level_3_topic":levels[2],"full_path":path})
+            result={
+                "decision":"KEEP",
+                "topic_assignments":assignments,"final_topic_paths":paths,
+                "scope_status":"IN_SCOPE" if matches else "UNCERTAIN",
+                "cluster_quality":"COHERENT" if matches else "MIXED",
+                "suggested_external_domain":"","follow_up_action":"NONE" if matches else "MANUAL_REVIEW",
+                "changes":[],"rationale":"根据本轮参考体系与机器匹配证据复用正式话题名称" if matches else "参考体系匹配证据不足或存在并列候选，保留待确认聚类",
+                "confidence":0.0,"needs_human_review":not bool(matches),"test_only":True,
+                "reference_matching":matches,
             }
             applied.append({
                 "cluster_id": cluster_id,
@@ -1866,21 +1863,24 @@ class WorkflowManager:
             })
 
         state = ensure_topic_ids(state)
+        state["taxonomy_version"] = canonical_version + 1
         state["updated_at"] = now_iso()
         state["change_log"] = [{
             "taxonomy_version": state["taxonomy_version"],
             "changed_at": state["updated_at"],
             "created_by": actor,
             "source": round_id,
-            "reason": "测试模式直接发布 BERTopic 聚类，未经过模型匹配或人工裁决",
+            "reason": "跳过外部大模型审核，以本轮参考体系的名称、典型词和已保存机器匹配命名；未匹配项待确认",
             "applied_cluster_count": len(applied),
         }]
+        matching_summary={"reference_matched_clusters":matched_count,"pending_clusters":pending_count,"reference_nodes":len(reference_nodes)}
+        state["reference_matching_summary"]=matching_summary
         test_taxonomy = self.round_dir(round_id) / "bertopic_test_taxonomy.json"
         snapshot = self.snapshots_root / f"taxonomy_test_v{state['taxonomy_version']:04d}_{round_id}.json"
         write_taxonomy(test_taxonomy, state)
         write_taxonomy(snapshot, state)
         write_json(self.round_dir(round_id) / "published_changes.json", {
-            "publish_mode": "bertopic_test", "test_only": True, "applied": applied,
+            "publish_mode": "bertopic_test", "test_only": True, "reference_matching_summary":matching_summary, "applied": applied,
         })
         write_jsonl(self.round_dir(round_id) / "topic_routing_pool.jsonl", [])
         round_state.update(
@@ -1892,7 +1892,7 @@ class WorkflowManager:
         self.write_round(round_state)
         return {
             "round": round_state, "taxonomy": public_taxonomy(state),
-            "snapshot": str(snapshot), "test_taxonomy": str(test_taxonomy),
+            "snapshot": str(snapshot), "test_taxonomy": str(test_taxonomy), "reference_matching_summary":matching_summary,
         }
 
     def start_validation(self, round_id: str, python_executable: str = "") -> dict[str, Any]:

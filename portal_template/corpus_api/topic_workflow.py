@@ -180,6 +180,7 @@ def _platform_taxonomy(public_taxonomy: dict[str, Any], round_id: str) -> dict[s
         "publish_mode": public_taxonomy.get("publish_mode", "reviewed"),
         "test_only": bool(public_taxonomy.get("test_only", False)),
         "source_method": public_taxonomy.get("source_method", "model_and_human_review"),
+        "reference_matching_summary": public_taxonomy.get("reference_matching_summary", {}),
         "source_round_id": round_id,
         "activated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         "nodes": nodes,
@@ -424,7 +425,7 @@ def publish(round_id: str) -> dict[str, Any]:
 )
 def publish_bertopic_test(round_id: str, payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
     if payload.get("confirm_test_mode") is not True:
-        raise HTTPException(status_code=400, detail="必须明确确认这是未经模型匹配和人工裁决的测试发布")
+        raise HTTPException(status_code=400, detail="必须确认这是跳过外部大模型审核、保留机器匹配证据的草案发布")
     result = _call(workflow_manager().publish_bertopic_test, round_id)
     result["platform_activation"] = _activate_taxonomy(result["taxonomy"], round_id)
     return result

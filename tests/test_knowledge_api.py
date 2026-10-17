@@ -87,3 +87,32 @@ class KnowledgeTests(unittest.TestCase):
   save_upload_sources(self.root,['data/raw/manual/a.txt'],'论文','')
   self.assertEqual(KnowledgeAssets(self.release).documents()['d1']['source_category'],'教材')
   self.assertEqual(self.assets.documents()['d1']['source_category'],'论文')
+
+
+class UploadBatchSourceTests(unittest.TestCase):
+ def test_textbook_txt_and_zip_derive_each_book_name_and_keep_batches_separate(self):
+  import io,zipfile
+  from corpus_api.source_metadata import upload_source_map
+  with tempfile.TemporaryDirectory() as folder:
+   root=Path(folder)
+   (root/'configs').mkdir()
+   (root/'configs/pipeline.json').write_text('{}',encoding='utf-8')
+   with patch('corpus_api.workbench.PROJECT_ROOT',root),patch('corpus_api.workbench.legacy.PROJECT_ROOT',root),patch.dict('os.environ',{'ADMIN_API_TOKEN':'test-only'}):
+    client=TestClient(create_app(lambda:object()));headers={'x-admin-token':'test-only'}
+    def upload(filename,data,kind):
+     response=client.post('/api/upload',params={'category':'corpus','filename':filename,'source_category':kind},content=data,headers=headers)
+     self.assertEqual(response.status_code,200,response.text);self.assertTrue(response.json()['ok'],response.text)
+    upload('教材甲.txt','第一本教材正文。'.encode(),'教材')
+    archive=io.BytesIO()
+    with zipfile.ZipFile(archive,'w') as z:
+     z.writestr('课程/教材乙.txt','第二本教材正文。'.encode());z.writestr('教材丙.txt','第三本教材正文。'.encode())
+    upload('多本教材.zip',archive.getvalue(),'教材')
+    upload('报道.txt','新闻正文。'.encode(),'新闻')
+    values=list(upload_source_map(root).values())
+    self.assertEqual({row['book_title'] for row in values if row['source_category']=='教材'},{'教材甲','教材乙','教材丙'})
+    self.assertEqual(len(values),4)
+    news=[row for row in values if row['source_category']=='新闻'];self.assertEqual(len(news),1);self.assertEqual(news[0]['book_title'],'')
+    for row in values:self.assertTrue((root/row['path']).is_file())
+    invalid=client.post('/api/upload',params={'category':'corpus','filename':'不应写入.txt','source_category':'错误类别'},content=b'test',headers=headers)
+    self.assertEqual(invalid.status_code,400)
+    self.assertFalse(list((root/'data/raw').rglob('不应写入.txt')))
