@@ -73,9 +73,9 @@
   },
   "matching": {
     "weights": {
-      "vector": 0.5,
-      "approved_terms": 0.25,
-      "taxonomy_keywords": 0.2,
+      "vector": 0.35,
+      "approved_terms": 0.15,
+      "taxonomy_keywords": 0.45,
       "hierarchy": 0.05
     },
     "cluster_match_threshold": 0.46,

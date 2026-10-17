@@ -311,6 +311,13 @@ def job(job_id: str) -> dict[str, Any]:
     return _call(workflow_manager().job, job_id)
 
 
+@router.post("/rounds/{round_id}/rematch", summary="复用已有聚类，重新计算参考体系匹配")
+def rematch(round_id: str, request: Request) -> dict[str, Any]:
+    from .workbench import require_admin
+    require_admin(request)
+    return _call(workflow_manager().recalculate_reference_matches,round_id)
+
+
 @router.get("/rounds/{round_id}/tasks", summary="读取本轮聚类标注任务")
 def tasks(round_id: str) -> dict[str, Any]:
     return {"items": _call(workflow_manager().cluster_tasks, round_id)}

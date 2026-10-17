@@ -21,12 +21,14 @@ try:
         assignable_paths, initialize_or_merge_taxonomy, normalize_three_level_taxonomy,
         read_taxonomy, taxonomy_tree, write_taxonomy,
     )
+    from .reference_terms import align_terms, configured_terms, lexical_components, combined_score
     from .sentence_sampler import sample_units_by_doc
 except ImportError:  # Direct script execution by WorkflowManager.
     from topic_taxonomy_store import (
         assignable_paths, initialize_or_merge_taxonomy, normalize_three_level_taxonomy,
         read_taxonomy, taxonomy_tree, write_taxonomy,
     )
+    from reference_terms import align_terms, configured_terms, lexical_components, combined_score
     from sentence_sampler import sample_units_by_doc
 
 
@@ -92,7 +94,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "bm25_weighting": True, "reduce_frequent_words": True,
     },
     "matching": {
-        "weights": {"vector": 0.50, "approved_terms": 0.25, "taxonomy_keywords": 0.20, "hierarchy": 0.05},
+        "weights": {"vector": 0.35, "approved_terms": 0.15, "taxonomy_keywords": 0.45, "hierarchy": 0.05},
         "cluster_match_threshold": 0.50,
         "unit_match_threshold": 0.52,
         "unit_review_threshold": 0.40,
@@ -567,43 +569,19 @@ def score_node_candidates(
             continue
         if node.get("assignable") is False:
             continue
-        keyword_hits = []
-        if node["name"] and node["name"].casefold() in lowered:
-            keyword_hits.append(node["name"])
-        keyword_hits.extend(
-            keyword for keyword in node["keywords"]
-            if keyword.casefold() in lowered and keyword not in keyword_hits
-        )
-        keyword_score = min(1.0, (2.0 * (node["name"] in keyword_hits) + max(0, len(keyword_hits) - (node["name"] in keyword_hits))) / 4.0)
-        term_hits: list[str] = []
-        positive_weight = 0.0
-        negative_weight = 0.0
-        for term in term_rows:
-            if not term["approved"] or node["id"] not in term["topic_node_ids"]:
-                continue
-            matched_forms = [form for form in term["forms"] if form.casefold() in lowered]
-            if not matched_forms:
-                continue
-            term_hits.extend(matched_forms)
-            if term["role"] == "negative":
-                negative_weight += term["weight"]
-            else:
-                positive_weight += term["weight"] * (1.25 if term["role"] == "core" else 1.0)
-        term_score = max(0.0, min(1.0, positive_weight / 2.5) - min(0.5, negative_weight / 2.0))
-        vector_score = max(0.0, float(np.dot(vector, prototype_vectors[index])))
-        hierarchy_score = min(1.0, 0.35 + 0.25 * int(node["depth"])) if keyword_hits or term_hits else 0.0
-        composite = (
-            float(weights["vector"]) * vector_score
-            + float(weights["approved_terms"]) * term_score
-            + float(weights["taxonomy_keywords"]) * keyword_score
-            + float(weights["hierarchy"]) * hierarchy_score
-        )
+        parts=lexical_components(node,text,term_rows)
+        vector_score=max(0.0,float(np.dot(vector,prototype_vectors[index])))
+        parts["vector_score"]=vector_score
+        composite,effective=combined_score(parts,weights)
+        term_score=parts["term_score"];keyword_score=parts["keyword_score"];hierarchy_score=parts["hierarchy_score"]
+        keyword_hits=parts["keyword_hits"];term_hits=parts["term_hits"]
         scored.append({
             "node_id": node["id"], "name": node["name"], "path": node["path"],
             "node_type": node["node_type"], "depth": node["depth"],
             "scope_status": str(node.get("scope_status") or "IN_SCOPE"),
             "score": round(composite, 6), "vector_score": round(vector_score, 6),
             "term_score": round(term_score, 6), "keyword_score": round(keyword_score, 6),
+            "effective_weights":effective,"has_linked_terms":parts["has_linked_terms"],
             "hierarchy_score": round(hierarchy_score, 6),
             "keyword_hits": sorted(set(keyword_hits)), "term_hits": sorted(set(term_hits)),
         })
@@ -1084,7 +1062,9 @@ def main() -> int:
             ]]
             if value
         )
-    term_rows, term_table_audit = read_term_table(args.term_table)
+    term_rows, term_table_audit = configured_terms(Path(__file__).resolve().parent.parent,args.term_table,read_term_table)
+    term_rows,link_audit=align_terms(term_rows,nodes)
+    term_table_audit["reference_alignment"]=link_audit
     protected.update(
         form for term in term_rows for form in term["forms"] if term["status"] not in {"rejected", "disabled"}
     )

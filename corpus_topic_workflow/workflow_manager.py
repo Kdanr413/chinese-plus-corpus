@@ -1230,6 +1230,30 @@ class WorkflowManager:
             if path.is_file() and path.name not in keep:
                 path.unlink()
 
+    def recalculate_reference_matches(self, round_id: str) -> dict[str, Any]:
+        from .rematch import build_rematch
+        with self.lock:
+            state=self.read_round(round_id)
+            if state.get("published") or state.get("status")!="clustered" or state.get("models"):
+                raise ValueError("仅允许重算聚类完成、尚未启动模型审核或发布的轮次；历史审核结果保持不变")
+            if any(job.get("round_id")==round_id and job.get("status") in {"queued","running","paused","cancelling"} for job in self.jobs.values()):
+                raise ValueError("当前轮次存在活动任务，请完成后再重算匹配")
+            directory=self.round_dir(round_id)
+            config=load_bertopic_config(self.root/"configs/bertopic.json")
+            summary,report=build_rematch(directory,self.root.parent,self.root/"configs/topic_seed_terms.csv",config)
+            history=directory/"matching_history"/(datetime.now().strftime("%Y%m%d-%H%M%S")+"-"+uuid.uuid4().hex[:8])
+            history.mkdir(parents=True,exist_ok=False)
+            for relative in ("clustering/demo_topic_summary.json","cluster_tasks.jsonl","reference_matching_report.json"):
+                source=directory/relative
+                if source.is_file():shutil.copy2(source,history/source.name)
+            report["created_at"]=now_iso();report["backup"]=str(history.relative_to(directory))
+            write_json(directory/"clustering/demo_topic_summary.json",summary)
+            write_jsonl(directory/"cluster_tasks.jsonl",self._consolidate_cluster_tasks(directory/"clustering"))
+            write_json(directory/"reference_matching_report.json",report)
+            state["reference_matching_report"]={key:value for key,value in report.items() if key!="term_alignment"}
+            self.write_round(state)
+            return report
+
     def cluster_tasks(self, round_id: str) -> list[dict[str, Any]]:
         return read_jsonl(self.round_dir(round_id) / "cluster_tasks.jsonl")
 
