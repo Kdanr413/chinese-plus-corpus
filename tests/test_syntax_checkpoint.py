@@ -82,3 +82,55 @@ class SyntaxCheckpointTests(unittest.TestCase):
   with patch.object(workbench,"require_admin"),patch.object(workbench.legacy,"result_summary",side_effect=AssertionError("must not scan")):
    result=workbench.status(None)
    self.assertIn("job",result)
+
+ def test_transient_progress_rename_denial_retries_without_losing_old_snapshot(self):
+  from scripts.workflow.atomic_files import write_progress_json
+  import os
+  with tempfile.TemporaryDirectory() as temp:
+   target=Path(temp)/"progress.json";target.write_text('{"completed":1}',encoding="utf-8")
+   original=os.replace;attempts=[]
+   def flaky(source,destination):
+    attempts.append(str(source))
+    if len(attempts)<3:
+     self.assertEqual(json.loads(target.read_text(encoding="utf-8"))["completed"],1)
+     raise PermissionError(5,"Access denied")
+    return original(source,destination)
+   with patch("scripts.workflow.atomic_files.os.replace",side_effect=flaky),patch("scripts.workflow.atomic_files.time.sleep"):
+    write_progress_json(target,{"completed":2})
+   self.assertEqual(len(attempts),3)
+   self.assertEqual(json.loads(target.read_text(encoding="utf-8"))["completed"],2)
+   self.assertEqual(list(Path(temp).glob('*.tmp')),[])
+
+ def test_progress_permission_denial_does_not_abort_successful_processing(self):
+  with tempfile.TemporaryDirectory() as temp:
+   ctx,out=self.setup_project(Path(temp))
+   with patch("scripts.workflow.syntax_checkpoint.write_progress_json",side_effect=PermissionError(5,"Access denied")):
+    path,metrics,errors=self.run_build(ctx,lambda *args,**kwargs:("(ROOT 示例)",{}))
+   self.assertTrue(path.exists());self.assertEqual(metrics["syntax_successes"],2);self.assertEqual(errors,[])
+   self.assertEqual(len(_load_cache(out/"syntax_tree_cache.jsonl")[0]),2)
+
+ def test_progress_denial_does_not_hide_original_service_failure(self):
+  with tempfile.TemporaryDirectory() as temp:
+   ctx,out=self.setup_project(Path(temp))
+   with patch("scripts.workflow.syntax_checkpoint.write_progress_json",side_effect=PermissionError(5,"Access denied")):
+    with self.assertRaisesRegex(RuntimeError,"连续失败 2"):
+     self.run_build(ctx,RuntimeError("HTTP Error 502"))
+   self.assertEqual(len((out/"syntax_tree_responses.jsonl").read_text(encoding="utf-8").splitlines()),2)
+
+ @unittest.skipUnless(__import__("os").name=="nt","Windows file sharing semantics")
+ def test_real_windows_reader_lock_is_retried(self):
+  import ctypes,threading
+  from ctypes import wintypes
+  from scripts.workflow.atomic_files import write_progress_json
+  kernel=ctypes.WinDLL("kernel32",use_last_error=True)
+  kernel.CreateFileW.argtypes=[wintypes.LPCWSTR,wintypes.DWORD,wintypes.DWORD,ctypes.c_void_p,wintypes.DWORD,wintypes.DWORD,ctypes.c_void_p]
+  kernel.CreateFileW.restype=wintypes.HANDLE
+  kernel.CloseHandle.argtypes=[wintypes.HANDLE]
+  with tempfile.TemporaryDirectory() as temp:
+   target=Path(temp)/"progress.json";target.write_text('{"completed":1}',encoding="utf-8")
+   handle=kernel.CreateFileW(str(target),0x80000000,3,None,3,128,None)
+   self.assertNotEqual(handle,ctypes.c_void_p(-1).value)
+   timer=threading.Timer(0.08,lambda:kernel.CloseHandle(handle));timer.start()
+   try:write_progress_json(target,{"completed":2})
+   finally:timer.join()
+   self.assertEqual(json.loads(target.read_text(encoding="utf-8"))["completed"],2)

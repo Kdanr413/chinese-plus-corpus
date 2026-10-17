@@ -4,6 +4,8 @@ import csv
 import hashlib
 import json
 import os
+import time
+from .atomic_files import replace_with_retry, write_progress_json
 from pathlib import Path
 from typing import Any
 
@@ -70,13 +72,27 @@ def build_syntax_tree_index(ctx):
     errors=[]
     hits=successes=completed=consecutive=0
     item_id=""
+    next_progress_retry=0.0
+    progress_warning=False
 
     def progress(detail, status="running"):
+        nonlocal next_progress_retry, progress_warning
         row={"status":status,"total":total,"completed":completed,"successes":successes,
              "failed_chunks":len(errors),"cache_hits":hits,"item_id":item_id,
              "detail":detail,"updated_at":stage.now_iso(),"invalid_cache_records":invalid}
-        temporary=progress_path.with_suffix(".json.tmp")
-        stage.write_json(temporary,row);temporary.replace(progress_path)
+        # A progress snapshot is advisory. A transient reader lock must not discard
+        # completed work or turn a healthy remote response into a failed task.
+        if status!="running" or time.monotonic()>=next_progress_retry:
+            try:
+                write_progress_json(progress_path,row)
+                next_progress_retry=0.0
+                progress_warning=False
+            except PermissionError as exc:
+                next_progress_retry=time.monotonic()+5.0
+                if not progress_warning:
+                    stage._emit_progress(3+round(completed/max(total,1)*82),
+                        f"进度文件暂时无法替换，将自动重试；加工继续，回复与缓存仍逐条保存：{exc}")
+                    progress_warning=True
         stage._emit_progress(3+round(completed/max(total,1)*82),detail)
 
     progress(f"准备句法树处理：0/{total} 条；可复用缓存 {len(cache)} 条；损坏缓存记录 {invalid}")
@@ -139,7 +155,7 @@ def build_syntax_tree_index(ctx):
                 tree_file.write(f"Item: {stage._bcc_safe_tree(tree)}\n");tree_file.flush()
                 completed+=1
                 progress(f"句法树处理：{completed}/{total} 条；成功 {successes}；失败片段 {len(errors)}；复用 {hits}")
-        tree_partial.replace(syntax_path);token_partial.replace(token_path)
+        replace_with_retry(tree_partial,syntax_path);replace_with_retry(token_partial,token_path)
     except BaseException as exc:
         progress(f"句法步骤已中止：{exc}；回复和缓存已保存，可重新运行句法步骤续跑",status="interrupted" if isinstance(exc,(KeyboardInterrupt,SystemExit)) else "failed")
         raise
