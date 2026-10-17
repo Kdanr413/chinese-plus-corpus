@@ -19,6 +19,32 @@ from corpus_topic_workflow import WorkflowManager
 
 
 class TopicWorkflowIntegrationTests(unittest.TestCase):
+    def test_cached_manager_repairs_missing_containers_without_resetting_assets(self):
+        package=Path(__file__).resolve().parents[1]/"corpus_topic_workflow"
+        with TemporaryDirectory() as directory:
+            root=Path(directory)
+            manager=WorkflowManager(package,root/"results",root/"canonical/taxonomy.json")
+            canonical_before=manager.canonical_taxonomy.read_bytes()
+            old=manager.rounds_root/"R0007";old.mkdir()
+            (old/"round.json").write_text(json.dumps({"round_id":"R0007","status":"sample_ready"}),encoding="utf-8")
+            sentinel=manager.snapshots_root/"existing.json";sentinel.write_bytes(b"preserve")
+            shutil.rmtree(manager.upload_root)
+            manager.list_rounds()
+            self.assertEqual(sentinel.read_bytes(),b"preserve")
+            self.assertEqual(manager.list_rounds()[0]["round_id"],"R0007")
+            shutil.rmtree(manager.workflow_root)
+            self.assertEqual(manager.bootstrap()["rounds"],[])
+            self.assertEqual(manager.canonical_taxonomy.read_bytes(),canonical_before)
+            self.assertEqual(manager.jobs,{})
+            uploaded=manager.save_upload("sample.jsonl",b'{"sentence_id":"s"}')
+            self.assertTrue(uploaded.is_file())
+            source=root/"sentences.jsonl"
+            source.write_text(json.dumps({"doc_id":"d","sentence_id":"s","text":"这是一条足够长的测试语句，可以用于检验目录重新建立后的正常抽样。"},ensure_ascii=False)+"\n",encoding="utf-8")
+            created=manager.create_round(source,sample_size=1,anchor_ratio=0)
+            self.assertEqual(created["status"],"sample_ready")
+            self.assertTrue((manager.round_dir(created["round_id"])/"sample.jsonl").is_file())
+            self.assertEqual(manager.canonical_taxonomy.read_bytes(),canonical_before)
+
     def test_source_profile_cache_invalidates_after_input_changes(self):
         from corpus_api import topic_workflow as api
         config={'min_analysis_characters':1,'max_analysis_characters':100,'structural_noise_exact':[],'structural_noise_regex':[],'exclude_structural_noise':False}

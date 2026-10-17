@@ -680,8 +680,7 @@ class WorkflowManager:
                 row["finished_at"] = now_iso()
             if row.get("job_id"):
                 self.jobs[row["job_id"]] = row
-        for path in (self.rounds_root, self.upload_root, self.snapshots_root):
-            path.mkdir(parents=True, exist_ok=True)
+        self.ensure_directories()
         if not self.canonical_taxonomy.exists():
             write_taxonomy(self.canonical_taxonomy, empty_taxonomy())
         state, _ = normalize_three_level_taxonomy(read_taxonomy(self.canonical_taxonomy))
@@ -700,6 +699,16 @@ class WorkflowManager:
         self._reconcile_interrupted_jobs()
         self._reconcile_published_decision_changes()
         self._persist_jobs()
+
+    def ensure_directories(self) -> None:
+        """Repair missing containers without replacing any files or starting jobs.
+
+        A manager can outlive its on-disk workspace. Directory creation at process
+        startup alone is insufficient after the workspace is removed or moved.
+        Missing historical rounds are not recreated as empty round records.
+        """
+        for path in (self.rounds_root, self.upload_root, self.snapshots_root):
+            path.mkdir(parents=True, exist_ok=True)
 
     def _reconcile_published_decision_changes(self) -> None:
         """Mark legacy published rounds dirty when decisions were edited after publication."""
@@ -940,6 +949,7 @@ class WorkflowManager:
         write_json(self.round_dir(value["round_id"]) / "round.json", value)
 
     def list_rounds(self) -> list[dict[str, Any]]:
+        self.ensure_directories()
         rows = [read_json(path / "round.json") for path in self.rounds_root.iterdir() if path.is_dir()]
         return sorted((row for row in rows if row), key=lambda row: row["round_id"], reverse=True)
 
@@ -970,6 +980,7 @@ class WorkflowManager:
         return executable
 
     def save_upload(self, filename: str, content: bytes) -> Path:
+        self.ensure_directories()
         safe_name = Path(filename).name
         if Path(safe_name).suffix.lower() != ".jsonl":
             raise ValueError("语料文件必须为 JSONL")
@@ -985,6 +996,7 @@ class WorkflowManager:
         self, source_path: Path, *, sample_size: int = 800, anchor_ratio: float = 0.30,
         seed: int = 20260817, use_initial_taxonomy: bool = True,
     ) -> dict[str, Any]:
+        self.ensure_directories()
         source_path = source_path.resolve()
         if not source_path.exists():
             raise ValueError(f"语料文件不存在：{source_path}")
