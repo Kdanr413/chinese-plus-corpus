@@ -22,3 +22,7 @@ python -m corpus_delivery.search --releases data/releases --host 127.0.0.1 --por
 此服务开放只读查询，没有上传或构建入口，也没有门户授权链接的登录、到期和撤销功能；能够访问服务入口的人可查询导入的成果。需要这些授权控制时用主平台分享。
 
 校验：python -m unittest tests.test_corpus_delivery。源码打包见 ../scripts/maintenance/README.md。
+
+## 公开介绍、下载与检索网站
+
+需要同时展示构建方法和提供完整源码下载时，执行 `python -m corpus_platform public-site --config configs/public_site.example.json`，本地入口为 http://127.0.0.1:8002/。正式使用须在私有站点配置中明确列出公开版本及脱敏源码包，不会自动公开所有数据。该模式复用本模块的只读引擎，与原构建平台分开运行；详见 [公开站完整说明](../docs/公开展示与只读检索网站.md)。

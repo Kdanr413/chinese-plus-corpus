@@ -1,0 +1,10 @@
+# Standalone public site / read-only search. No model-processing services are run.
+# Native LangSC/BCC compatibility must be validated on the target host.
+jieba==0.42.1
+fastapi==0.141.1
+uvicorn==0.52.4
+httpx==0.28.1
+pydantic>=2.12,<3
+psycopg[binary]>=3.2,<4
+python-dotenv>=1,<2
+LangSC==2.0.7

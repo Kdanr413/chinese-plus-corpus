@@ -6,7 +6,7 @@ import time
 import urllib.request
 import webbrowser
 from pathlib import Path
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Request
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from corpus_api.service import CorpusService, SearchEngineCache, SearchRequestError, SearchTargetError, SearchAssetUnavailableError, CorpusServiceUnavailableError
 from corpus_api.models import CorpusListResponse, CorpusVersionListResponse, SearchResponse
@@ -17,7 +17,7 @@ _SHARED_QUERY_SLOTS = threading.BoundedSemaphore(4)
 
 WEB_ROOT = Path(__file__).resolve().parents[1] / 'corpus_api' / 'web'
 
-def create_app(root: Path, *, service=None):
+def create_app(root: Path, *, service=None, landing_html: str | None = None):
     service = service or CorpusService(ReleaseCatalog(root), SearchEngineCache(loader=lambda index: IsolatedSearchEngine(index,_SHARED_QUERY_SLOTS)))
     app = FastAPI(title='语料库只读检索', docs_url='/docs', redoc_url=None, openapi_url='/openapi.json')
     @app.exception_handler(Exception)
@@ -37,9 +37,10 @@ def create_app(root: Path, *, service=None):
         return {'status': 'ok', 'service': 'corpus-readonly-search', 'api_version': '1.0'}
     @app.get('/', response_class=HTMLResponse)
     @app.get('/search', response_class=HTMLResponse)
-    def page():
+    def page(request: Request):
+        if landing_html is not None and request.url.path == "/":return landing_html
         html = (WEB_ROOT / 'search.html').read_text(encoding='utf-8-sig')
-        html = html.replace('<a href="/">语料库构建</a>', '')
+        html = html.replace('<a href="/">语料库构建</a>', '<a href="/">首页</a>' if landing_html is not None else '')
         html = html.replace('系统自动读取 PostgreSQL Registry 中可检索的 Release。', '选择已发布的语料库与版本。')
         html = html.replace('再保存结果或导出结构化语料', '再保存查询结果')
         html = html.replace('保存本次查询结果，或导出当前已发布版本的结构化语料。', '保存本次查询结果。')

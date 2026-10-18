@@ -1,0 +1,11 @@
+{
+  "site_title": "中文+ 领域语料库",
+  "description": "检索已发布语料，查看领域术语与话题体系，下载可复用的本地构建流程。",
+  "corpus_title": "领域语料库",
+  "release_root": "data/public_site/releases",
+  "allowed_releases": [],
+  "source_archive": "",
+  "repository_url": "https://github.com/Kdanr413/chinese-plus-corpus",
+  "repository_requires_access": true,
+  "usage_notice": "本站提供已发布版本的检索、标注查询与统计导出。语料和代码的使用范围请按维护者说明确认；第三方组件遵循各自许可。"
+}

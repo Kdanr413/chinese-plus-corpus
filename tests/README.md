@@ -28,3 +28,5 @@ python -m unittest discover -s tests -v
 设置 `CORPUS_PORTAL_NATIVE_TEST=1` 后运行 `python -m unittest tests.test_portal_native_search`，可用两个独立生成的真实 BCC 索引交替检查词频与上下文隔离。
 
 步骤模型回归：`python -m unittest tests.test_step_models`。真实前端组合检查：`node tests/check_cleaning_toggle.cjs`（开发验证需 Node.js）。
+
+公开介绍与下载站：`python -m unittest tests.test_public_site tests.test_corpus_delivery -v`，覆盖选定版本隔离、只读路由、无数据库查询、源码校验与篡改拒绝、模板下载及空配置。真实索引需额外执行词频与例句查询，Linux 原生库兼容性不能由模拟引擎测试代替。

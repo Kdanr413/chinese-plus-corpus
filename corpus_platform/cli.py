@@ -63,6 +63,10 @@ def _parser() -> argparse.ArgumentParser:
     serve = sub.add_parser("serve", help="启动统一登录、独立构建和分享平台")
     serve.add_argument("--legacy", action="store_true", help="本机管理员兼容模式：直接打开原单用户工作台")
     serve.add_argument("--setup", action="store_true", help="初始化账户表，首次使用在终端创建账号")
+    public = sub.add_parser("public-site", help="公开介绍、只读检索与构建程序下载（独立入口）")
+    public.add_argument("--config",type=Path,default=Path("configs/public_site.example.json"))
+    public.add_argument("--host",default="127.0.0.1")
+    public.add_argument("--port",type=int,default=8002)
     portal = sub.add_parser("portal", help="多用户独立项目与只读分享")
     portal.add_argument("portal_args", nargs=argparse.REMAINDER)
     return parser
@@ -86,6 +90,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     _configure_console()
     args = _parser().parse_args(argv)
     try:
+        if args.command == "public-site":
+            from corpus_delivery.public_site import main as public_main
+            options=["--config",str(args.config),"--host",args.host,"--port",str(args.port)]
+            if args.project_root:options=["--project-root",str(args.project_root),*options]
+            return public_main(options)
         if args.command == "portal":
             from corpus_portal.cli import main as portal_main
             return portal_main(args.portal_args)
