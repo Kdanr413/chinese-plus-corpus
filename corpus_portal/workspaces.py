@@ -31,6 +31,9 @@ class PortalSettings:
     max_body: int=64*1024*1024
     project_quota: int=10*1024*1024*1024
     bind_host: str="127.0.0.1"
+    listen_port: int=8000
+    network_admin_users: tuple[str,...]=()
+    config_file: Path=ROOT/".env"
     @classmethod
     def environment(cls):
         def path(key,default):
@@ -43,7 +46,7 @@ class PortalSettings:
         quota_gib=float(os.getenv('PORTAL_PROJECT_QUOTA_GB','10'))
         if not math.isfinite(quota_gib) or quota_gib<=0:
             raise ValueError('PORTAL_PROJECT_QUOTA_GB must be a finite positive GiB value')
-        return cls(path('PORTAL_STORAGE','data/portal'),path('PORTAL_TEMPLATE','portal_template'),url,int(os.getenv('PORTAL_MAX_WORKERS','4')),project_quota=int(quota_gib*1024**3),bind_host=os.getenv('API_HOST','127.0.0.1'))
+        return cls(path('PORTAL_STORAGE','data/portal'),path('PORTAL_TEMPLATE','portal_template'),url,int(os.getenv('PORTAL_MAX_WORKERS','4')),project_quota=int(quota_gib*1024**3),bind_host=os.getenv('API_HOST','127.0.0.1'),listen_port=int(os.getenv('API_PORT','8000')),network_admin_users=tuple(value.strip().lower() for value in os.getenv('PORTAL_NETWORK_ADMIN_USERS','').split(',') if value.strip()))
     def project_root(self, pid):
         pid=uuid.UUID(str(pid)).hex
         root=(self.storage/'projects'/pid).resolve()

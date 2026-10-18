@@ -46,6 +46,9 @@ def main(argv=None):
     add.add_argument('username')
     reset=commands.add_parser('reset-password')
     reset.add_argument('username')
+    network_admin=commands.add_parser('allow-network-admin')
+    network_admin.add_argument('username')
+    network_admin.add_argument('--remove',action='store_true')
     serve=commands.add_parser('serve')
     serve.add_argument('--host',default=os.getenv('API_HOST','127.0.0.1'))
     serve.add_argument('--port',type=int,default=int(os.getenv('API_PORT','8000')))
@@ -53,11 +56,26 @@ def main(argv=None):
     a=p.parse_args(argv)
     settings=PortalSettings.environment()
     if a.command=='serve':
-        settings=replace(settings,bind_host=a.host)
+        settings=replace(settings,bind_host=a.host,listen_port=a.port)
         if not 1<=a.port<=65535: p.error('端口必须在 1 至 65535 之间')
         if not os.getenv('PORTAL_PUBLIC_URL'):
             settings=replace(settings,public_url=f'http://127.0.0.1:{a.port}')
     store=PortalStore()
+    if a.command=='allow-network-admin':
+        from corpus_registry.db import connect
+        from .network_settings import update_environment
+        from dotenv import dotenv_values
+        name=a.username.strip().lower()
+        with connect() as c:
+            exists=c.execute('SELECT id FROM corpus_portal.users WHERE username=%s AND active',(name,)).fetchone()
+        if not exists:p.error('账号不存在或已停用')
+        values=dotenv_values(settings.config_file,interpolate=False)
+        names={value.strip().lower() for value in str(values.get('PORTAL_NETWORK_ADMIN_USERS') or '').split(',') if value.strip()}
+        if a.remove:names.discard(name)
+        else:names.add(name)
+        update_environment(settings.config_file,{'PORTAL_NETWORK_ADMIN_USERS':','.join(sorted(names))})
+        print('访问与分享设置管理员名单已保存；重启平台后生效。')
+        return 0
     if a.command=='setup':
         setup_accounts(store)
         return 0

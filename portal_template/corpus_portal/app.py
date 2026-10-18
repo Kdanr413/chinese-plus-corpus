@@ -12,7 +12,7 @@ from pathlib import Path
 import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from corpus_delivery.catalog import ReleaseCatalog
 from corpus_delivery.search import create_app as create_search_app
 from corpus_api.service import CorpusService, SearchEngineCache
@@ -30,6 +30,12 @@ COOKIE='corpus_portal_session'
 class Login(BaseModel):
     username: str=Field(min_length=3,max_length=64)
     password: str=Field(min_length=3,max_length=128)
+class NetworkChange(BaseModel):
+    model_config=ConfigDict(extra="forbid")
+    api_host: str=Field(min_length=1,max_length=100)
+    api_port: int=Field(ge=1,le=65535)
+    public_url: str=Field(min_length=1,max_length=500)
+
 class NewProject(BaseModel):
     name: str=Field(min_length=1,max_length=120)
 class NewShare(BaseModel):
@@ -84,7 +90,7 @@ def create_app(settings=None,store=None,supervisor=None,share_loader=None):
     @app.get('/_portal/api/me')
     def me(request:Request):
         u=user(request)
-        return {'username':u['username'],'csrf_token':u['csrf_token']}
+        return {'username':u['username'],'csrf_token':u['csrf_token'],'can_manage_network':str(u['username']).lower() in settings.network_admin_users}
     @app.post('/_portal/api/logout')
     def logout(request:Request):
         user(request)
@@ -120,6 +126,28 @@ def create_app(settings=None,store=None,supervisor=None,share_loader=None):
         try:addresses=sorted({row[4][0] for row in socket.getaddrinfo(socket.gethostname(),None,socket.AF_INET) if not row[4][0].startswith(('127.','169.254.'))})
         except OSError:addresses=[]
         return {'public_url':settings.public_url,'loopback_url':host in {'localhost','127.0.0.1','::1'},'listen_host':settings.bind_host,'lan_addresses':addresses,'note':'127.0.0.1只能本机访问。跨电脑需配置API_HOST与PORTAL_PUBLIC_URL，并检查防火墙/服务器入口；本接口不保证远程可达。'}
+    def network_admin(request):
+        u=user(request)
+        if str(u['username']).lower() not in settings.network_admin_users:
+            raise HTTPException(403,'只有获授权的访问与分享设置管理员可以修改全局网络配置')
+        return u
+    def active_network():
+        return {'api_host':settings.bind_host,'api_port':settings.listen_port,'public_url':settings.public_url}
+    @app.get('/_portal/api/network-settings')
+    def read_network_settings(request:Request):
+        network_admin(request)
+        from .network_settings import configured
+        active=active_network();saved=configured(settings.config_file,active)
+        return {'active':active,'saved':saved,'restart_required':saved!=active,'configuration_file':'.env'}
+    @app.post('/_portal/api/network-settings')
+    def save_network_settings(payload:NetworkChange,request:Request):
+        network_admin(request)
+        from .network_settings import save
+        try:saved,backup=save(settings.config_file,payload.model_dump())
+        except ValueError as exc:raise HTTPException(400,str(exc)) from exc
+        active=active_network()
+        return {'ok':True,'active':active,'saved':saved,'restart_required':saved!=active,'backup':backup,'message':'已保存。请等加工任务结束后从启动窗口重启平台，新配置才会生效。当前服务继续运行。'}
+
     @app.get('/_portal/api/projects/{pid}/versions')
     def versions(pid:uuid.UUID,request:Request):
         owned(request,pid)

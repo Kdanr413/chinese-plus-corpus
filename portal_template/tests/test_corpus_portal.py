@@ -183,6 +183,38 @@ class PortalTests(unittest.TestCase):
             self.assertEqual(guest.get(base+'/'+path).status_code,404)
             self.assertIn(guest.post(base+'/'+path,json={}).status_code,[404,405])
         self.assertNotIn('语料库构建</a>',guest.get(base+'/search').text)
+    def test_admin_network_settings_are_deferred_private_and_csrf_protected(self):
+        self.settings.network_admin_users=('alice',)
+        self.settings.config_file=self.root/'.env'
+        original='# keep this comment\nDB_PASSWORD="test-private-value"\nAPI_PORT=8000\nAPI_PORT=8000\nCUSTOM_FIELD=unchanged\n'
+        self.settings.config_file.write_text(original,encoding='utf-8')
+        endpoint='/_portal/api/network-settings'
+        payload={'api_host':'0.0.0.0','api_port':9000,'public_url':'http://192.168.1.20:9000'}
+        self.assertTrue(self.alice.get('/_portal/api/me').json()['can_manage_network'])
+        self.assertFalse(self.bob.get('/_portal/api/me').json()['can_manage_network'])
+        self.assertEqual(TestClient(self.app).get(endpoint).status_code,401)
+        self.assertEqual(self.bob.get(endpoint).status_code,403)
+        self.assertEqual(self.bob.post(endpoint,json=payload,headers=self.b).status_code,403)
+        self.assertEqual(self.alice.post(endpoint,json=payload).status_code,403)
+        self.assertEqual(self.alice.post(endpoint,json=payload,headers={**self.a,'origin':'http://unexpected.example'}).status_code,403)
+        self.assertEqual(self.settings.config_file.read_text(encoding='utf-8'),original)
+        result=self.alice.post(endpoint,json=payload,headers=self.a)
+        self.assertEqual(result.status_code,200,result.text)
+        data=result.json();self.assertTrue(data['restart_required'])
+        self.assertEqual(data['saved'],payload);self.assertEqual(data['active']['api_host'],'127.0.0.1')
+        self.assertEqual(self.settings.bind_host,'127.0.0.1');self.assertEqual(self.settings.public_url,'http://127.0.0.1:8000')
+        content=self.settings.config_file.read_text(encoding='utf-8')
+        self.assertIn('DB_PASSWORD="test-private-value"',content);self.assertIn('CUSTOM_FIELD=unchanged',content)
+        self.assertEqual(content.count('API_PORT='),1)
+        backups=list((self.root/'logs/network-settings-backups').glob('*.env'));self.assertEqual(len(backups),1)
+        self.assertEqual(backups[0].read_text(encoding='utf-8'),original)
+        shown=self.alice.get(endpoint);self.assertNotIn('test-private-value',shown.text);self.assertNotIn('DB_PASSWORD',shown.text)
+        self.assertEqual(shown.json()['saved'],payload);self.assertTrue(shown.json()['restart_required'])
+        self.assertEqual(self.supervisor.calls,0)
+        before=self.settings.config_file.read_bytes()
+        bad=self.alice.post(endpoint,json={**payload,'DB_PASSWORD':'replace'},headers=self.a)
+        self.assertEqual(bad.status_code,422);self.assertEqual(self.settings.config_file.read_bytes(),before)
+
     def test_share_openapi_and_network_configuration(self):
         self.release();share=self.share();base=share['url'].removesuffix('/search')
         guest=TestClient(self.app)
@@ -310,3 +342,14 @@ class StorageConfigurationTests(unittest.TestCase):
             self.assertEqual(quota_error(root,3,8),'')
             self.assertIn('项目存储额度不足',quota_error(root,4,8))
             self.assertEqual((root/'nested/results.txt').read_bytes(),b'12345')
+
+
+class NetworkConfigurationValidationTests(unittest.TestCase):
+    def test_urls_and_ip_fields_are_validated_without_network_requests(self):
+        from corpus_portal.network_settings import validate
+        values={'api_host':'0.0.0.0','api_port':8000,'public_url':'https://corpus.example.org/'}
+        self.assertEqual(validate(values)['public_url'],'https://corpus.example.org')
+        for url in ['http://0.0.0.0:8000','http://[::]:8000','ftp://example.org','http://user:password@example.org','http://example.org/share/x','http://example.org?x=y','http://example.org#x','http://example.org:99999','http://host/\nAPI_HOST=0.0.0.0']:
+            with self.subTest(url=url),self.assertRaises(ValueError):validate({**values,'public_url':url})
+        with self.assertRaises(ValueError):validate({**values,'api_host':'0.0.0.0\nDB_PASSWORD=changed'})
+        self.assertEqual(validate({**values,'api_host':'::1','public_url':'http://[::1]:8000'})['api_host'],'::1')
