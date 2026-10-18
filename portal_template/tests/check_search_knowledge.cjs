@@ -4,3 +4,14 @@ const initialize=html.split(/\r?\n/).find(x=>x.trim().startsWith('async function
 
 assert.ok(html.includes("termParams.set('page_size','10')"));assert.ok(html.includes('/api/v1/terms/export?'));assert.ok(html.includes('row.TopicNames'));assert.ok(html.includes('话题标志词'));assert.ok(html.includes('applySourceDocuments'));
 console.log('PASS: search defaults to top ten with full CSV, uses topic names, and offers batch source editing');
+
+const refresh=html.split(/\r?\n/).find(x=>x.trim().startsWith('async function refreshKnowledge('));
+const requests=[],viewFields={};const view={URLSearchParams,$:id=>viewFields[id]??={value:'',selectedOptions:[{textContent:'当前项目'}]},knowledgeParams:()=>new URLSearchParams('dataset=workspace'),escapeHtml:x=>String(x??''),termStatsPage:1,termStatsTotal:0,api:async url=>{requests.push(url);return url.startsWith('/api/v1/terms?')?{available:true,total:17,sentence_count:2,items:[],frequency_definition:'已保存标注'}:{available:true,taxonomy_version:'3',total:1,items:[{name:'动力电池',level:3,keywords:['电池材料'],sentence_frequency:1}]}}};
+vm.createContext(view);vm.runInContext(refresh,view);
+view.refreshKnowledge().then(()=>{
+ const terms=new URL(requests.find(x=>x.startsWith('/api/v1/terms?')),'http://local');assert.equal(terms.searchParams.get('min_length'),'4');assert.equal(terms.searchParams.get('page_size'),'10');
+ const topics=new URL(requests.find(x=>x.startsWith('/api/v1/topics?')),'http://local');assert.equal(topics.searchParams.get('level'),'3');
+ const download=new URL(viewFields['#downloadTermStatistics'].href,'http://local');assert.equal(download.searchParams.get('min_length'),null);assert.equal(download.searchParams.get('page_size'),null);
+ assert.ok(viewFields['#taxonomyResults'].innerHTML.includes('电池材料'));assert.ok(viewFields['#taxonomyStatus'].textContent.includes('三级话题'));
+ console.log('PASS: long terms filtered before top ten; full CSV remains unfiltered by length; only leaf topics requested and keywords rendered');
+}).catch(e=>{console.error(e);process.exit(1)});

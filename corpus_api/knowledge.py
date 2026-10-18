@@ -37,11 +37,11 @@ def install_knowledge_routes(app,dependency,*,allow_workspace=False):
             total+=1
         return {'dataset':dataset,'available':a.annotations.is_file(),'items':items,'total':total,'page':page,'page_size':page_size}
     @app.get('/api/v1/terms',tags=['Corpus Annotations'],summary='查询标注术语的词频和句子频次')
-    def terms(request:Request,dataset:Literal['release','workspace']='release',corpus_key:str|None=Query(default=None,max_length=128),version:str|None=Query(default=None,max_length=128),q:str=Query(default='',max_length=250),source_category:str=Query(default='',max_length=20),book_title:str=Query(default='',max_length=400),page:int=Query(default=1,ge=1,le=100000),page_size:int=Query(default=10,ge=1,le=200),service=Depends(dependency)):
-        validate_source(source_category);a=assets(request,service,dataset,corpus_key,version);summary=a.summary(source_category,book_title);items=[r for r in summary['terms'] if not q or q in r['term'] or q==r['term_id']];start=(page-1)*page_size
-        return {'dataset':dataset,'available':summary['available'],'sentence_count':summary['sentence_count'],'frequency_definition':summary['frequency_definition'],'items':items[start:start+page_size],'total':len(items),'page':page,'page_size':page_size}
+    def terms(request:Request,dataset:Literal['release','workspace']='release',corpus_key:str|None=Query(default=None,max_length=128),version:str|None=Query(default=None,max_length=128),q:str=Query(default='',max_length=250),min_length:int=Query(default=0,ge=0,le=250),source_category:str=Query(default='',max_length=20),book_title:str=Query(default='',max_length=400),page:int=Query(default=1,ge=1,le=100000),page_size:int=Query(default=10,ge=1,le=200),service=Depends(dependency)):
+        validate_source(source_category);a=assets(request,service,dataset,corpus_key,version);summary=a.summary(source_category,book_title);items=[r for r in summary['terms'] if len(''.join(r['term'].split()))>=min_length and (not q or q in r['term'] or q==r['term_id'])];start=(page-1)*page_size
+        return {'dataset':dataset,'available':summary['available'],'sentence_count':summary['sentence_count'],'frequency_definition':summary['frequency_definition'],'items':items[start:start+page_size],'total':len(items),'page':page,'page_size':page_size,'min_length':min_length}
     @app.get('/api/v1/terms/export',tags=['Corpus Annotations'],summary='下载当前范围的完整术语频次CSV')
-    def export_terms(request:Request,dataset:Literal['release','workspace']='release',corpus_key:str|None=None,version:str|None=None,q:str=Query(default='',max_length=250),source_category:str=Query(default='',max_length=20),book_title:str=Query(default='',max_length=400),service=Depends(dependency)):
+    def export_terms(request:Request,dataset:Literal['release','workspace']='release',corpus_key:str|None=None,version:str|None=None,q:str=Query(default='',max_length=250),min_length:int=Query(default=0,ge=0,le=250),source_category:str=Query(default='',max_length=20),book_title:str=Query(default='',max_length=400),service=Depends(dependency)):
         validate_source(source_category);a=assets(request,service,dataset,corpus_key,version)
         summary=a.summary(source_category,book_title)
         def generate():
@@ -49,17 +49,19 @@ def install_knowledge_routes(app,dependency,*,allow_workspace=False):
             yield '\ufeff'
             writer.writerow(['term','term_id','frequency','sentence_frequency']);yield buffer.getvalue();buffer.seek(0);buffer.truncate(0)
             for row in summary['terms']:
+                if len(''.join(row['term'].split()))<min_length:continue
                 if q and q not in row['term'] and q!=row['term_id']:continue
                 writer.writerow([row['term'],row['term_id'],row['frequency'],row['sentence_frequency']]);yield buffer.getvalue();buffer.seek(0);buffer.truncate(0)
         return StreamingResponse(generate(),media_type='text/csv; charset=utf-8',headers={'Content-Disposition':'attachment; filename="term_frequency.csv"'})
     @app.get('/api/v1/topics',tags=['Corpus Annotations'],summary='读取正式话题体系及各话题标注单元数')
-    def topics(request:Request,dataset:Literal['release','workspace']='release',corpus_key:str|None=Query(default=None,max_length=128),version:str|None=Query(default=None,max_length=128),source_category:str=Query(default='',max_length=20),book_title:str=Query(default='',max_length=400),service=Depends(dependency)):
+    def topics(request:Request,level:int=Query(default=0,ge=0,le=3),dataset:Literal['release','workspace']='release',corpus_key:str|None=Query(default=None,max_length=128),version:str|None=Query(default=None,max_length=128),source_category:str=Query(default='',max_length=20),book_title:str=Query(default='',max_length=400),service=Depends(dependency)):
         validate_source(source_category);a=assets(request,service,dataset,corpus_key,version);taxonomy=json.loads(a.taxonomy.read_text(encoding='utf-8-sig')) if a.taxonomy.is_file() else {};counts=a.summary(source_category,book_title)['topic_counts']
         from .topic_display import TopicDisplay
         nodes=TopicDisplay(a.root,a.workspace).nodes;items=[]
         for n in nodes:
+            if level and n['level']!=level:continue
             item=dict(n);path=str(n.get('path') or n.get('full_path') or n.get('name',''));item['sentence_frequency']=counts.get(path,0);item['subtree_sentence_frequency']=sum(v for p,v in counts.items() if p==path or p.startswith(path+' > '));items.append(item)
-        return {'dataset':dataset,'available':bool(taxonomy),'taxonomy_version':taxonomy.get('taxonomy_version'),'source_round_id':taxonomy.get('source_round_id'),'status':taxonomy.get('status'),'items':items,'total':len(items),'needs_naming':sum(bool(n.get('needs_name')) for n in nodes),'counts_note':'sentence_frequency为该路径直接标注数；subtree_sentence_frequency为自身及后代路径的标签次数之和，多标签可能重复计数'}
+        return {'dataset':dataset,'available':bool(taxonomy),'taxonomy_version':taxonomy.get('taxonomy_version'),'source_round_id':taxonomy.get('source_round_id'),'status':taxonomy.get('status'),'items':items,'total':len(items),'needs_naming':sum(bool(n.get('needs_name')) for n in items),'level':level,'keywords_missing':sum(not n.get('keywords') for n in items),'counts_note':'sentence_frequency为该路径直接标注数；subtree_sentence_frequency为自身及后代路径的标签次数之和，多标签可能重复计数'}
     @app.get('/api/v1/sources',tags=['Corpus Annotations'],summary='查询来源类别、具体教材书名与BCC来源对应')
     def sources(request:Request,dataset:Literal['release','workspace']='release',corpus_key:str|None=Query(default=None,max_length=128),version:str|None=Query(default=None,max_length=128),page:int=Query(default=1,ge=1,le=100000),page_size:int=Query(default=100,ge=1,le=1000),service=Depends(dependency)):
         a=assets(request,service,dataset,corpus_key,version);docs=list(a.documents().values());start=(page-1)*page_size

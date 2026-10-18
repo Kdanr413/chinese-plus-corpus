@@ -1,6 +1,6 @@
 from pathlib import Path
 import csv,json,tempfile,unittest,uuid
-from unittest.mock import patch
+from unittest.mock import patch,MagicMock
 from fastapi.testclient import TestClient
 from corpus_api.app import create_app
 from corpus_api.knowledge_assets import KnowledgeAssets,snapshot_knowledge
@@ -74,6 +74,51 @@ class KnowledgeTests(unittest.TestCase):
   self.assertEqual(display.resolve('电池、储能')['name'],'待命名聚类 BT_TOPIC_021')
   self.assertEqual(display.resolve('技术 > 储能 > 动力电池')['name'],'动力电池')
   self.assertEqual(display.nodes[0]['keywords'],['电池','储能'])
+
+ def test_min_length_filters_before_top_ten_and_full_export_is_preserved(self):
+  long_terms=["领域术语"+str(i) for i in range(15)]+["动力电池","光伏 发电"]
+  terms=["短词","逆变器",*long_terms]
+  self.assets.annotations.write_text(json.dumps({"document_id":"u","source_document_id":"d1","clean_text":"短词"*30+" "+" ".join(terms),"terms":terms,"topics":[]},ensure_ascii=False),encoding="utf-8")
+  with patch('corpus_api.knowledge.PROJECT_ROOT',self.root),patch.dict('os.environ',{'ADMIN_API_TOKEN':'test-only'}):
+   client=TestClient(create_app(lambda:object()));h={'x-admin-token':'test-only'}
+   response=client.get('/api/v1/terms?dataset=workspace&min_length=4',headers=h)
+   result=response.json();self.assertEqual(response.status_code,200,response.text)
+   self.assertEqual(result['total'],17);self.assertEqual(len(result['items']),10)
+   self.assertTrue(all(len(''.join(row['term'].split()))>=4 for row in result['items']))
+   exact=client.get('/api/v1/terms?dataset=workspace&min_length=4&q=动力电池',headers=h).json()
+   self.assertEqual(exact['items'][0]['term'],'动力电池')
+   default=client.get('/api/v1/terms?dataset=workspace',headers=h).json()
+   self.assertEqual(default['items'][0]['term'],'短词')
+   import io
+   full=client.get('/api/v1/terms/export?dataset=workspace',headers=h)
+   self.assertEqual(len(list(csv.DictReader(io.StringIO(full.content.decode('utf-8-sig'))))),19)
+   filtered=client.get('/api/v1/terms/export?dataset=workspace&min_length=4',headers=h)
+   self.assertEqual(len(list(csv.DictReader(io.StringIO(filtered.content.decode('utf-8-sig'))))),17)
+   self.assertEqual(client.get('/api/v1/terms?dataset=workspace&min_length=-1',headers=h).status_code,422)
+
+ def test_leaf_topics_show_saved_keyword_variants_and_do_not_modify_snapshot(self):
+  taxonomy={'taxonomy_version':'3','nodes':[
+   {'id':'root','name':'技术','path':'技术','level':1,'keywords':[]},
+   {'id':'parent','name':'储能','path':'技术 > 储能','level':2,'keywords':[]},
+   {'id':'leaf','name':'动力电池','path':'技术 > 储能 > 动力电池','level':3,'keywords':[],'representative_keywords':['锂离子电池','荷电状态']},
+   {'id':'legacy','name':'BT_TOPIC_001｜电池材料、循环寿命','path':'技术 > 储能 > BT_TOPIC_001｜电池材料、循环寿命','level':3,'keywords':[]}]}
+  self.assets.taxonomy.write_text(json.dumps(taxonomy,ensure_ascii=False),encoding='utf-8');before=self.assets.taxonomy.read_bytes()
+  with patch('corpus_api.knowledge.PROJECT_ROOT',self.root),patch.dict('os.environ',{'ADMIN_API_TOKEN':'test-only'}):
+   client=TestClient(create_app(lambda:object()));h={'x-admin-token':'test-only'}
+   full=client.get('/api/v1/topics?dataset=workspace',headers=h).json();self.assertEqual(full['total'],4)
+   leaves=client.get('/api/v1/topics?dataset=workspace&level=3',headers=h).json()
+   self.assertEqual(leaves['total'],2);self.assertEqual(leaves['keywords_missing'],0)
+   self.assertTrue(all(row['level']==3 and row['keywords'] for row in leaves['items']))
+   self.assertEqual(leaves['items'][0]['keywords'],['锂离子电池','荷电状态'])
+   self.assertEqual(leaves['items'][1]['keywords'],['电池材料','循环寿命'])
+  self.assertEqual(self.assets.taxonomy.read_bytes(),before)
+  snapshot_knowledge(self.root,self.release/'metadata/knowledge',['d1'])
+  from corpus_delivery.search import create_app as shared
+  release_before=(self.release/'metadata/knowledge/taxonomy.json').read_bytes()
+  service=MagicMock();service._resolve_target.return_value=({'corpus_key':'demo'},{'version':'1'});service.registry.resolve_release_path.return_value=self.release
+  with TestClient(shared(self.release,service=service)) as client:
+   self.assertEqual(client.get('/api/v1/topics?level=3').json()['total'],2)
+  self.assertEqual((self.release/'metadata/knowledge/taxonomy.json').read_bytes(),release_before)
 
  def test_upload_sources_inherit_and_snapshot_without_mutating_old_release(self):
   from corpus_api.source_metadata import save_upload_sources,validate_source
