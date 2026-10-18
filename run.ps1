@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('ui', 'api', 'legacy-api', 'status', 'doctor', 'planning', 'design', 'rights', 'collect', 'clean', 'linguistic', 'topics', 'topic-only', 'term-only', 'publish-topics', 'publish-terms', 'quality', 'release', 'syntax', 'maintenance', 'term-llm')]
+    [ValidateSet('ui', 'api', 'public-site', 'legacy-api', 'status', 'doctor', 'planning', 'design', 'rights', 'collect', 'clean', 'linguistic', 'topics', 'topic-only', 'term-only', 'publish-topics', 'publish-terms', 'quality', 'release', 'syntax', 'maintenance', 'term-llm')]
     [string]$Stage = 'ui',
     [string]$Config = '',
     [string]$PythonExe = $env:CORPUS_PYTHON,
@@ -95,6 +95,18 @@ foreach ($candidate in $candidates) {
 
 if (-not $selectedPython) {
     throw 'No working Python 3 found. Activate conda environment corpus-platform, set CORPUS_PYTHON, or pass -PythonExe.'
+}
+
+if ($Stage -eq 'public-site') {
+    Push-Location -LiteralPath $PSScriptRoot
+    try {
+        $siteArgs = @('-m', 'corpus_delivery.public_launcher')
+        # Config has a pipeline default above; only an explicitly chosen site config is forwarded.
+        if ($Config -and $Config -ne (Join-Path $PSScriptRoot 'configs\pipeline.json')) { $siteArgs += @('--config', $Config) }
+        if ($NoBrowser) { $siteArgs += '--no-browser' }
+        & $selectedPython @siteArgs
+        exit $LASTEXITCODE
+    } finally { Pop-Location }
 }
 
 if ($Stage -in @('api', 'legacy-api', 'status', 'doctor')) {

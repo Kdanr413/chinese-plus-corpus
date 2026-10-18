@@ -42,7 +42,7 @@ def program(target):
    if not source.is_file() or any(x in EXCLUDED for x in relative.parts):continue
    if (source.suffix.lower() not in EXTENSIONS and source.name!='Caddyfile.example') or source.name.startswith('.env') or source.name in {'dynamic_topic_taxonomy.json','reference_taxonomy.json','step_models.json','step_models.json.tmp'}:continue
    copy_file(source,target/relative)
- for name in ['README.md','DEVELOPMENT_STATUS.md','requirements.txt','requirements-public.txt','environment.yml','.env.example','.gitignore','.gitattributes','THIRD_PARTY_NOTICES.md','run.ps1','启动语料库平台.cmd']:copy_file(ROOT/name,target/name)
+ for name in ['README.md','DEVELOPMENT_STATUS.md','requirements.txt','requirements-public.txt','environment.yml','.env.example','.gitignore','.gitattributes','THIRD_PARTY_NOTICES.md','run.ps1','启动语料库平台.cmd','启动公开语料站.cmd']:copy_file(ROOT/name,target/name)
  for source in (ROOT/'inputs').rglob('*'):
   if not source.is_file() or source.suffix not in {'.csv','.txt','.jsonl','.md'}:continue
   text=source.read_text(encoding='utf-8-sig')
