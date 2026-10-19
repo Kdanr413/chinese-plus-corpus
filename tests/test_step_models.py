@@ -79,3 +79,17 @@ class StepModelTests(unittest.TestCase):
             sm.mark_verified(self.root,'cross',sm.selected_models(data,'cross'),PROMPT)
             result=client.post('/api/v1/recognition/runs',json=payload);self.assertEqual(result.status_code,202,result.text)
             self.assertEqual(thread.call_args.kwargs['args'][0].cross_validator_models[0].id,'cross')
+
+    def test_cleaning_http_error_reports_status_and_sanitized_endpoint(self):
+        import urllib.error
+        app=FastAPI();app.include_router(api.router)
+        payload={'sentence':'测试句子','model_name':'example','base_url':'https://api.example.org/llm','api_key':'dummy-test-key'}
+        error=urllib.error.HTTPError('https://user:private@api.example.org/llm/chat/completions?token=private',404,'Not Found',{},None)
+        with patch.object(api.legacy,'PROJECT_ROOT',self.root),patch.object(api,'_formal_step_prompt',return_value=PROMPT),patch.object(api.legacy,'execute_prompt_test',side_effect=error),patch.object(api,'require_admin'):
+            r=TestClient(app).post('/api/v1/recognition/prompt-stages/cleaning/test',json=payload)
+        self.assertEqual(r.status_code,502);self.assertEqual(r.json()['upstream_status'],404);self.assertEqual(r.json()['request_url'],'https://api.example.org/llm/chat/completions');self.assertNotIn('private',r.text);self.assertNotIn('dummy-test-key',r.text)
+    def test_cleaning_timeout_has_retryable_response_instead_of_opaque_500(self):
+        app=FastAPI();app.include_router(api.router)
+        with patch.object(api.legacy,'PROJECT_ROOT',self.root),patch.object(api,'_formal_step_prompt',return_value=PROMPT),patch.object(api.legacy,'execute_prompt_test',side_effect=TimeoutError('private internal details')),patch.object(api,'require_admin'):
+            r=TestClient(app).post('/api/v1/recognition/prompt-stages/cleaning/test',json={'sentence':'测试','model_name':'example','base_url':'https://api.example.org/v1','api_key':'dummy-test-key'})
+        self.assertEqual(r.status_code,504);self.assertNotIn('private',r.text)

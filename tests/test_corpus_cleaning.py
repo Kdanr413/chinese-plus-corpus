@@ -39,6 +39,8 @@ class CleanOutputPathTests(unittest.TestCase):
                     'https://open.bigmodel.cn/api/paas/v4/chat/completions/']:
             self.assertEqual(chat_completions_url(url), 'https://open.bigmodel.cn/api/paas/v4/chat/completions')
         self.assertEqual(chat_completions_url('https://api.deepseek.com'), 'https://api.deepseek.com/chat/completions')
+        self.assertEqual(chat_completions_url('https://models.example.edu/llm/v1'), 'https://models.example.edu/llm/v1/chat/completions')
+        self.assertEqual(chat_completions_url('https://models.example.edu/llm/v1/chat/completions'), 'https://models.example.edu/llm/v1/chat/completions')
 
 
 class HeadingDetectionTests(unittest.TestCase):

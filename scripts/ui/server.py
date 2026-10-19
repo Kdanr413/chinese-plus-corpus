@@ -176,7 +176,9 @@ def _execute_prompt_test_once(payload: dict[str, Any]) -> dict[str, Any]:
     started = time.perf_counter()
     with urllib.request.urlopen(request, timeout=180) as response:
         response_payload = json.loads(response.read().decode("utf-8"))
-    raw_content = str(response_payload["choices"][0]["message"]["content"])
+    if not isinstance(response_payload,dict) or not isinstance(response_payload.get('choices'),list) or not response_payload['choices'] or not isinstance(response_payload['choices'][0],dict) or not isinstance(response_payload['choices'][0].get('message'),dict) or not isinstance(response_payload['choices'][0]['message'].get('content'),str):
+        raise ValueError('模型接口未返回有效的 choices[0].message.content 文本，请确认使用聊天补全API')
+    raw_content = response_payload["choices"][0]["message"]["content"]
     parsed: Any = None
     parse_error = ""
     try:

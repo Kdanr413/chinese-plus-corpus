@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import threading
+import urllib.error
+from urllib.parse import urlsplit, urlunsplit
 import uuid
 import re
 import hashlib
@@ -514,7 +516,20 @@ def test_stage_prompt(
     formal=_formal_step_prompt(stage) if stage in step_models.STAGES else {}
     before=step_models.read_settings(legacy.PROJECT_ROOT) if stage in step_models.STAGES else {}
     expected=step_models.fingerprint(before,stage,formal) if before else None
-    result=_execute_stage_prompt(stage,payload,request)
+    try:
+        result=_execute_stage_prompt(stage,payload,request)
+    except urllib.error.HTTPError as exc:
+        parsed=urlsplit(exc.url)
+        host=parsed.hostname or ''
+        if parsed.port:host+=':'+str(parsed.port)
+        target=urlunsplit((parsed.scheme,host,parsed.path,'',''))
+        message=f"模型接口返回 HTTP {exc.code}；请核对完整请求路径、模型名称和接口权限。实际请求：{target}"
+        return JSONResponse({'error':message,'upstream_status':exc.code,'request_url':target},status_code=502)
+    except (TimeoutError,urllib.error.URLError) as exc:
+        timeout=isinstance(exc,TimeoutError) or isinstance(getattr(exc,'reason',None),TimeoutError)
+        return JSONResponse({'error':'模型接口请求超时，请稍后重试。' if timeout else '无法连接模型接口，请检查地址、网络和HTTPS证书。'},status_code=504 if timeout else 502)
+    except ValueError:
+        return JSONResponse({'error':'模型测试输入或返回格式无效，请检查配置、提示词与接口返回。'},status_code=400)
     if isinstance(result,dict) and stage in step_models.STAGES:
         prompt_same=all(not getattr(payload,k).strip() or getattr(payload,k).strip()==formal[k].strip() for k in ['system_prompt','task_instruction'])
         strategy_same=before['steps'][stage]['strategy']==payload.strategy.value and before['steps'][stage]['min_validators']==payload.min_validators
