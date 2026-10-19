@@ -81,7 +81,7 @@ def home_body(config,versions):
     figures=''.join('<div class="stat"><b>'+value+'</b><span>'+name+'</span></div>' for name,value in stats)
     version=html.escape(str(first.get("version","未配置")))
     return f'''<section class="hero"><div><span class="eyebrow">Corpus · Methods · Tools</span><h1>从真实语料出发，<br>发现领域语言规律。</h1><p class="lead">{html.escape(config.description)}</p><div class="actions"><a class="button" href="/search">进入语料库检索 →</a><a class="button secondary" href="/workflow">了解构建流程</a></div></div><aside class="panel collection"><span class="badge">{status}</span><h2 style="margin-top:22px">{html.escape(config.corpus_title)}</h2><p class="muted">当前版本 {version}。支持词频、上下文例句、领域术语、话题体系与来源筛选。</p><div class="stats">{figures}</div></aside></section>
-<section class="section"><div class="section-heading"><h2>选择你的使用方式</h2><p>在线查语料，在本地构建自己的语料库。</p></div><div class="cards"><article class="card"><span class="number">01 / EXPLORE</span><h3>查询已发布语料</h3><p>阅读真实例句，查看术语标记和话题名称。按报刊、新闻、论文或具体教材限定来源。</p><a href="/search">打开在线检索 →</a></article><article class="card"><span class="number">02 / UNDERSTAND</span><h3>了解构建方法</h3><p>从文件整理、清洗到话题与术语标注，了解每个步骤的输入、输出和检查要点。</p><a href="/workflow">查看完整流程 →</a></article><article class="card"><span class="number">03 / BUILD LOCALLY</span><h3>下载本地构建工具</h3><p>获取完整代码、安装说明和输入模板，在自己的电脑上处理个人语料，选择适合的模型。</p><a href="/download">获取程序与模板 →</a></article></div></section>
+<section class="section"><div class="section-heading"><h2>选择你的使用方式</h2><p>在线查语料，在本地构建自己的语料库。</p></div><div class="cards"><article class="card"><span class="number">01 / EXPLORE</span><h3>查询已发布语料</h3><p>阅读真实例句，查看术语标记和话题名称。按报刊、新闻、论文、政策文件或具体教材限定来源。</p><a href="/search">打开在线检索 →</a></article><article class="card"><span class="number">02 / UNDERSTAND</span><h3>了解构建方法</h3><p>从文件整理、清洗到话题与术语标注，了解每个步骤的输入、输出和检查要点。</p><a href="/workflow">查看完整流程 →</a></article><article class="card"><span class="number">03 / BUILD LOCALLY</span><h3>下载本地构建工具</h3><p>获取完整代码、安装说明和输入模板，在自己的电脑上处理个人语料，选择适合的模型。</p><a href="/download">获取程序与模板 →</a></article></div></section>
 <section class="section note">本网站提供已发布语料的只读检索。个人语料上传、模型配置和加工在下载后的本地工作台完成。检索结果可保存，术语统计可导出CSV。</section>'''
 
 
@@ -114,7 +114,7 @@ r = requests.get(base + "/api/v1/kwic",
                  params={"q": "储能", "limit": 10}, timeout=30)
 r.raise_for_status()
 for row in r.json()["result"]["Context"]:
-    print(row.get("TopicNames"), row.get("Terms"), row.get("Context"))</pre><p>可选参数：<code>corpus_key</code>、<code>version</code> 指定公开版本；<code>source_category</code> 限定报刊/新闻/论文/教材，<code>book_title</code> 进一步限定具体教材。当前支持的端点与参数以<a href="/openapi.json">OpenAPI描述</a>为准。</p><div class="note">接口提供只读查询和统计。上传、加工、模型管理、私有工作区及原始文件下载没有接入本站。</div>'''
+    print(row.get("TopicNames"), row.get("Terms"), row.get("Context"))</pre><p>可选参数：<code>corpus_key</code>、<code>version</code> 指定公开版本；<code>source_category</code> 限定报刊/新闻/论文/政策文件/教材，<code>book_title</code> 进一步限定具体教材。当前支持的端点与参数以<a href="/openapi.json">OpenAPI描述</a>为准。</p><div class="note">接口提供只读查询和统计。上传、加工、模型管理、私有工作区及原始文件下载没有接入本站。</div>'''
 
 
 def create_app(config:PublicConfig|dict,*,project_root:Path=ROOT,engine_loader=None):

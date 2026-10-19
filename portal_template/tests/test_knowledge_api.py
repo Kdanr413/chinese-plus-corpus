@@ -153,10 +153,16 @@ class UploadBatchSourceTests(unittest.TestCase):
      z.writestr('课程/教材乙.txt','第二本教材正文。'.encode());z.writestr('教材丙.txt','第三本教材正文。'.encode())
     upload('多本教材.zip',archive.getvalue(),'教材')
     upload('报道.txt','新闻正文。'.encode(),'新闻')
+    upload('政策通知.txt','政策文件正文。'.encode(),'政策文件')
     values=list(upload_source_map(root).values())
     self.assertEqual({row['book_title'] for row in values if row['source_category']=='教材'},{'教材甲','教材乙','教材丙'})
-    self.assertEqual(len(values),4)
+    self.assertEqual(len(values),5)
     news=[row for row in values if row['source_category']=='新闻'];self.assertEqual(len(news),1);self.assertEqual(news[0]['book_title'],'')
+    policies=[row for row in values if row['source_category']=='政策文件'];self.assertEqual(len(policies),1);self.assertEqual(policies[0]['book_title'],'')
+    from corpus_api.knowledge_assets import category
+    from corpus_api.knowledge import SourceItem
+    self.assertEqual(category('policy_document'),'政策文件');self.assertEqual(category('政策文件'),'政策文件')
+    self.assertEqual(SourceItem(document_id='policy',source_category='政策文件').source_category,'政策文件')
     for row in values:self.assertTrue((root/row['path']).is_file())
     invalid=client.post('/api/upload',params={'category':'corpus','filename':'不应写入.txt','source_category':'错误类别'},content=b'test',headers=headers)
     self.assertEqual(invalid.status_code,400)

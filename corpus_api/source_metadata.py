@@ -3,10 +3,10 @@ import csv,threading,uuid
 from pathlib import Path
 from scripts.workflow.atomic_files import replace_with_retry
 _LOCK=threading.Lock()
-CATEGORIES=("报刊","新闻","论文","教材","未分类")
+CATEGORIES=("报刊","新闻","论文","政策文件","教材","未分类")
 
 def validate_source(kind,book,require_book=True):
- if kind not in CATEGORIES:raise ValueError("来源须为报刊、新闻、论文、教材或未分类")
+ if kind not in CATEGORIES:raise ValueError("来源须为报刊、新闻、论文、政策文件、教材或未分类")
  if len(book)>400:raise ValueError("教材书名不得超过400字符")
  if kind=="教材" and require_book and not book.strip():raise ValueError("教材必须填写具体书名")
 

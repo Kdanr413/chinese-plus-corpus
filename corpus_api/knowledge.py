@@ -11,7 +11,7 @@ PROJECT_ROOT=Path(__file__).resolve().parents[1]
 _SOURCE_LOCK=threading.Lock()
 class SourceItem(BaseModel):
     document_id:str=Field(min_length=1,max_length=200)
-    source_category:Literal['报刊','新闻','论文','教材','未分类']
+    source_category:Literal['报刊','新闻','论文','政策文件','教材','未分类']
     book_title:str=Field(default='',max_length=400)
 class SourceUpdate(BaseModel):
     items:list[SourceItem]=Field(min_length=1,max_length=2000)
@@ -28,7 +28,7 @@ def install_knowledge_routes(app,dependency,*,allow_workspace=False):
         corpus,row=service._resolve_target(corpus_key,version)
         return KnowledgeAssets(service.registry.resolve_release_path(str(corpus['corpus_key']),str(row['version'])))
     def validate_source(value):
-        if value and value not in SOURCE_CATEGORIES:raise HTTPException(400,'来源须为报刊、新闻、论文、教材或未分类')
+        if value and value not in SOURCE_CATEGORIES:raise HTTPException(400,'来源须为报刊、新闻、论文、政策文件、教材或未分类')
     @app.get('/api/v1/annotations',tags=['Corpus Annotations'],summary='分页读取保存的句子术语与话题标记')
     def annotations(request:Request,dataset:Literal['release','workspace']='release',corpus_key:str|None=Query(default=None,max_length=128),version:str|None=Query(default=None,max_length=128),sentence_id:str=Query(default='',max_length=250),term:str=Query(default='',max_length=250),topic:str=Query(default='',max_length=500),source_category:str=Query(default='',max_length=20),book_title:str=Query(default='',max_length=400),page:int=Query(default=1,ge=1,le=100000),page_size:int=Query(default=50,ge=1,le=200),service=Depends(dependency)):
         validate_source(source_category);a=assets(request,service,dataset,corpus_key,version);start=(page-1)*page_size;items=[];total=0

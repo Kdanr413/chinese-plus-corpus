@@ -5,7 +5,7 @@ from .knowledge_assets import KnowledgeAssets,read_json,SOURCE_CATEGORIES
 from .service import SearchRequestError
 
 def selected_ranges(release_root,source_category,book_title):
-    if source_category and source_category not in SOURCE_CATEGORIES:raise SearchRequestError('来源须为报刊、新闻、论文、教材或未分类')
+    if source_category and source_category not in SOURCE_CATEGORIES:raise SearchRequestError('来源须为报刊、新闻、论文、政策文件、教材或未分类')
     root=Path(release_root);assets=KnowledgeAssets(root);docs=list(assets.documents().values())
     wanted=[d for d in docs if (not source_category or d['source_category']==source_category) and (not book_title or d['book_title']==book_title)]
     if not wanted:return []

@@ -6,9 +6,9 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-SOURCE_CATEGORIES=('报刊','新闻','论文','教材','未分类')
+from .source_metadata import CATEGORIES as SOURCE_CATEGORIES
 _SUMMARY_LOCK=threading.Lock()
-ALIASES={'newspaper':'报刊','press':'报刊','news':'新闻','paper':'论文','journal':'论文','academic':'论文','textbook':'教材','book_textbook':'教材'}
+ALIASES={'newspaper':'报刊','press':'报刊','news':'新闻','paper':'论文','journal':'论文','academic':'论文','policy':'政策文件','policy_document':'政策文件','textbook':'教材','book_textbook':'教材'}
 
 def rows(path):
     if path.is_file():

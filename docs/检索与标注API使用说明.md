@@ -74,7 +74,7 @@ print(r.json()["taxonomy_version"], r.json()["items"])
 
 ## 4. 登记来源，教材精确到书名
 
-来源为：报刊、新闻、论文、教材、未分类。它们是人工确认的来源类别，不根据文件名猜测。普通书籍/报告默认未分类。先 GET sources 取得文档ID，再调用：
+来源为：报刊、新闻、论文、政策文件、教材、未分类。它们是人工确认的来源类别，不根据文件名猜测。普通书籍/报告默认未分类。先 GET sources 取得文档ID，再调用：
 
 ```python
 r = session.post(base + "/api/v1/source-metadata", headers={"X-CSRF-Token": csrf}, json={
