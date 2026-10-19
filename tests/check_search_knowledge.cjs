@@ -7,11 +7,13 @@ console.log('PASS: search defaults to top ten with full CSV, uses topic names, a
 
 const refresh=html.split(/\r?\n/).find(x=>x.trim().startsWith('async function refreshKnowledge('));
 const requests=[],viewFields={};const view={URLSearchParams,$:id=>viewFields[id]??={value:'',selectedOptions:[{textContent:'当前项目'}]},knowledgeParams:()=>new URLSearchParams('dataset=workspace'),escapeHtml:x=>String(x??''),termStatsPage:1,termStatsTotal:0,api:async url=>{requests.push(url);return url.startsWith('/api/v1/terms?')?{available:true,total:17,sentence_count:2,items:[],frequency_definition:'已保存标注'}:{available:true,taxonomy_version:'3',total:1,items:[{name:'动力电池',level:3,keywords:['电池材料'],sentence_frequency:1}]}}};
-vm.createContext(view);vm.runInContext(refresh,view);
+vm.createContext(view);vm.runInContext(html.split(/\r?\n/).find(x=>x.trim().startsWith('function renderTopicHierarchy(')),view);vm.runInContext(refresh,view);
 view.refreshKnowledge().then(()=>{
  const terms=new URL(requests.find(x=>x.startsWith('/api/v1/terms?')),'http://local');assert.equal(terms.searchParams.get('min_length'),'4');assert.equal(terms.searchParams.get('page_size'),'10');
- const topics=new URL(requests.find(x=>x.startsWith('/api/v1/topics?')),'http://local');assert.equal(topics.searchParams.get('level'),'3');
+ const topics=new URL(requests.find(x=>x.startsWith('/api/v1/topics?')),'http://local');assert.equal(topics.searchParams.get('level'),'0');
  const download=new URL(viewFields['#downloadTermStatistics'].href,'http://local');assert.equal(download.searchParams.get('min_length'),null);assert.equal(download.searchParams.get('page_size'),null);
- assert.ok(viewFields['#taxonomyResults'].innerHTML.includes('电池材料'));assert.ok(viewFields['#taxonomyStatus'].textContent.includes('三级话题'));
- console.log('PASS: long terms filtered before top ten; full CSV remains unfiltered by length; only leaf topics requested and keywords rendered');
+ assert.ok(viewFields['#taxonomyResults'].innerHTML.includes('电池材料'));assert.ok(viewFields['#taxonomyStatus'].textContent.includes('三级'));
+ console.log('PASS: long terms filtered before top ten; full CSV remains unfiltered by length; all topic levels requested and hierarchy keywords rendered');
 }).catch(e=>{console.error(e);process.exit(1)});
+
+const treeCtx={escapeHtml:x=>String(x??'').replaceAll('<','&lt;')};vm.createContext(treeCtx);vm.runInContext(html.split(/\r?\n/).find(x=>x.trim().startsWith('function renderTopicHierarchy(')),treeCtx);const tree=treeCtx.renderTopicHierarchy([{id:'a',name:'能源',path:'能源',level:1},{id:'b',name:'太阳能',path:'能源 > 太阳能',level:2},{id:'c',name:'光伏',path:'能源 > 太阳能 > 光伏',level:3,keywords:['<安全>']}]);assert.ok(tree.includes('一级'));assert.ok(tree.includes('二级'));assert.ok(tree.includes('三级'));assert.ok(tree.includes('&lt;安全>'));assert.equal((tree.match(/class="topic-branch"/g)||[]).length,2);console.log('PASS: three-level tree is nested and keyword HTML escaped');
